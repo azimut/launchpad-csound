@@ -1,4 +1,4 @@
 ;;;; package.lisp
 
-(defpackage #:launchpad-csound
-  (:use #:cl))
+(uiop:define-package #:launchpad-csound
+  (:use #:cl #:cl-arrows))

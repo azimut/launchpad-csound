@@ -8,6 +8,10 @@
   :serial t
   :depends-on (#:launchpad
                #:cloud/udp
-               #:parse-float)
+               #:parse-float
+               #:cl-punch
+               #:cl-arrows
+               #:trivia)
   :components ((:file "package")
-               (:file "launchpad-csound")))
+               ;;(:file "launchpad-csound")
+               ))
