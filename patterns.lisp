@@ -5,6 +5,18 @@
 
 (defvar *scheduler* (make-instance 'scheduler:scheduler))
 (defvar *keys* (make-hash-table))
+(defvar *lock* (bt:make-lock "write-lock"))
+
+(defmethod handle-input ((server patterns) raw-midi)
+  (trivia:match raw-midi
+    ((list 144 key 127)
+     (if (gethash key *keys*)
+         (progn
+           (launchpad:raw-command (list 128 key 0))
+           (remove-key key))
+         (progn
+           (launchpad:raw-command (list 144 key (launchpad:color :lg)))
+           (add-key key))))))
 
 (defmacro at (time function &rest arguments)
   `(scheduler:sched-add *scheduler*
@@ -25,7 +37,7 @@
 (defun iname-step (row)
   (parse-float:parse-float
    (format nil "~d.~d" 2 (+ row 1))))
-(cloud:reconnect *csound*)
+
 (defun step-keys (current-col)
   (alexandria:maphash-values
    (lambda (col-and-row)
@@ -52,14 +64,3 @@
 
 (defun remove-key (key)
   (remhash key *keys*))
-
-(defmethod handle-input ((server patterns) raw-midi)
-  (trivia:match raw-midi
-    ((list 144 key 127)
-     (if (gethash key *keys*)
-         (progn
-           (launchpad:raw-command (list 128 key 0))
-           (remove-key key))
-         (progn
-           (launchpad:raw-command (list 144 key (launchpad:color :lg)))
-           (add-key key))))))
