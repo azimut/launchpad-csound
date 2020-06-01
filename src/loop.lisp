@@ -2,16 +2,9 @@
 
 (defclass launchpad (cloud::csound)
   ())
-(defclass splitted (launchpad)
-  ())
-(defclass patterns (launchpad)
-  ())
 
 (defmethod cloud:connect :before ((server launchpad))
   (start-io-thread))
-
-(defmethod cloud:connect :after ((server splitted))
-  (launchpad:change-layout :drum))
 
 (defmethod cloud:reconnect :after ((server launchpad))
   (launchpad:reset))

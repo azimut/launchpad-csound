@@ -16,6 +16,5 @@
                #:scheduler)
   :components ((:file "package")
                (:file "loop")
-               (:file "storage")
                ;;(:file "launchpad-csound")
                ))

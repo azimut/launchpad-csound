@@ -1,5 +1,11 @@
 (in-package #:launchpad-csound)
 
+(defclass splitted (launchpad)
+  ())
+
+(defmethod cloud:connect :after ((server splitted))
+  (launchpad:change-layout :drum))
+
 (cl-punch:enable-punch-syntax)
 
 (defparameter *light-pressure* :lo)
