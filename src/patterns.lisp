@@ -7,7 +7,7 @@
   ())
 
 (defvar *scheduler* (make-instance 'scheduler:scheduler))
-(defvar *keys* (make-hash-table))
+(defvar *keys* (make-hash-table :synchronized t))
 
 (defmethod cloud:connect :after ((server patterns))
   (launchpad:change-layout :xy)
@@ -40,8 +40,8 @@
                            (iname-step row)
                            0
                            .15
-                           (+ 60 (car (cm:next scale (+ 1 row))))
-                           ;;(ego::pc-relative 60 row (ego::scale 0 :aeolian))
+                           ;;(+ 60 (car (cm:next scale (+ 1 row))))
+                           (ego::pc-relative 60 row (ego::scale 0 :aeolian))
                            (ego::rcosr 40 5 5)))))
      *keys*)))
 
@@ -70,3 +70,5 @@
          (progn
            (launchpad:raw-command (list 144 key (launchpad:color :lg)))
            (add-key key))))))
+
+

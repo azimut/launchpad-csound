@@ -13,7 +13,9 @@
                #:cl-punch
                #:cl-arrows
                #:trivia
-               #:scheduler)
+               #:scheduler
+               #:ego
+               #:cm)
   :components ((:file "package")
                (:file "loop")
                ;;(:file "launchpad-csound")

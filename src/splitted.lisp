@@ -44,9 +44,9 @@
 
 (let ((root  3)
       (scale :minor))
-  (reset)
-  (cl-rtmidi::with-midi-oss-out (cl-rtmidi:*default-midi-out-stream* "/dev/midi1")
-    (light-up root scale))
+  ;; (cloud:reconnect *csound*)
+  ;; (cl-rtmidi::with-midi-oss-out (cl-rtmidi:*default-midi-out-stream* "/dev/midi1")
+  ;;   (light-up root scale))
   (defmethod handle-input ((server splitted) raw-midi)
     (trivia:match raw-midi
       ((list 144 note 127)
