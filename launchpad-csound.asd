@@ -6,6 +6,7 @@
   :license  "MIT"
   :version "0.0.1"
   :serial t
+  :pathname "src"
   :depends-on (#:launchpad
                #:cloud/udp
                #:parse-float
@@ -15,5 +16,6 @@
                #:scheduler)
   :components ((:file "package")
                (:file "loop")
+               (:file "storage")
                ;;(:file "launchpad-csound")
                ))
