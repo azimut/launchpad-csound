@@ -11,7 +11,9 @@
                #:parse-float
                #:cl-punch
                #:cl-arrows
-               #:trivia)
+               #:trivia
+               #:scheduler)
   :components ((:file "package")
+               (:file "loop")
                ;;(:file "launchpad-csound")
                ))
