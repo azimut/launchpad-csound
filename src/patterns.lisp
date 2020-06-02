@@ -1,14 +1,7 @@
 (in-package #:launchpad-csound)
 
-;; (cloud:connect   *csound*)
-;; (cloud:reconnect *csound*)
-
 ;; TODO: schedule ahead fix
 ;; TODO: time arg on beat top-row
-;; - Scene
-;;   - Key
-;;     - Column
-;;     - Row
 
 (defun make-cycles ()
   (loop :repeat 8 :collect
@@ -46,11 +39,11 @@
     (dotimes (idx 8)
       (scheduler:sched-add *scheduler* time #'beat idx))))
 
-
 (defmethod cloud:disconnect :after ((server patterns))
   (scheduler:sched-stop *scheduler*)
   (scheduler:sched-clear *scheduler*)
   (reset-cycles))
+
 (defmethod cloud:connect :after ((server patterns))
   (launchpad:change-layout :xy)
   (scheduler:sched-run *scheduler*)
@@ -91,9 +84,6 @@
 (defmethod (setf index) :after (new-value (server patterns))
   (relight-scene new-value (launchpad:color :lg)))
 
-;;--------------------------------------------------
-
-;;(let ((scale (cm:new cm:cycle :of (ego::scale 0 :minor)))))
 (defun step-keys (stepping-scene stepping-column)
   (serapeum:do-hash-table (k v *keys*)
     (destructuring-bind (scene midi) k
@@ -118,30 +108,30 @@
     (at offset #'beat idx)))
 
 (defmethod handle-input ((server patterns) raw-midi)
-  (let ((s (index server)))
-    (trivia:match raw-midi
-      ((trivia:guard (list 144 key 127)
-                     (or (= key 8)
-                         (= key 24)
-                         (= key 40)
-                         (= key 56)
-                         (= key 72)
-                         (= key 88)
-                         (= key 104)
-                         (= key 120)))
-       (progn (launchpad:raw-command (list 144 key (launchpad:color :lg)))
-              (setf (index server) (floor key 16))))
-      ((trivia:guard (list 144 key 0)
-                     (or (= key 8)
-                         (= key 24)
-                         (= key 40)
-                         (= key 56)
-                         (= key 72)
-                         (= key 88)
-                         (= key 104)
-                         (= key 120)))
-       (progn (launchpad:raw-command (list 128 key 0))))
-      ((list 144 key 127)
+  (trivia:match raw-midi
+    ((trivia:guard (list 144 key 127)
+                   (or (= key 8)
+                       (= key 24)
+                       (= key 40)
+                       (= key 56)
+                       (= key 72)
+                       (= key 88)
+                       (= key 104)
+                       (= key 120)))
+     (progn (launchpad:raw-command (list 144 key (launchpad:color :lg)))
+            (setf (index server) (floor key 16))))
+    ((trivia:guard (list 144 key 0)
+                   (or (= key 8)
+                       (= key 24)
+                       (= key 40)
+                       (= key 56)
+                       (= key 72)
+                       (= key 88)
+                       (= key 104)
+                       (= key 120)))
+     (progn (launchpad:raw-command (list 128 key 0))))
+    ((list 144 key 127)
+     (let ((s (index server)))
        (if (gethash (list s key) *keys*)
            (progn (launchpad:raw-command (list 128 key 0))
                   (remove-key s key))
