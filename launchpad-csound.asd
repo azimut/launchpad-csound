@@ -19,5 +19,5 @@
                #:atomics)
   :components ((:file "package")
                (:file "loop")
-               ;;(:file "launchpad-csound")
-               ))
+               (:file "launchpad-csound")
+               (:file "patterns")))
