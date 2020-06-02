@@ -12,11 +12,6 @@
 (defparameter *light-root*     :ho)
 (defparameter *light-scale*    :lg)
 
-(defun iname (note)
-  (let ((instrument (if (left-p note) 1 2)))
-    (parse-float:parse-float
-     (format nil "~d.~d" instrument note))))
-
 (defun left-p (note)
   "T if left on drum layout"
   (<= 36 note 67))
@@ -52,8 +47,8 @@
       ((list 144 note 127)
        (progn (print (list note (mod note 12)))
               (launchpad:raw-command (list 144 note (launchpad:color *light-pressure*)))
-              (cloud:schedule server (iname note) 0 60 note 60)))
+              (cloud:schedule server (iname 1 note) 0 60 note 60)))
       ((list 144 note 0)
        (progn (launchpad:raw-command (list 128 note 0))
-              (cloud:schedule server (iname note) 0 0 note 0))
+              (cloud:schedule server (iname 1 note) 0 0 note 0))
        (light-up root scale)))))

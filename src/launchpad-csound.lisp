@@ -10,6 +10,6 @@
 ;; (cloud:connect   *csound*)
 ;; (cloud:reconnect *csound*)
 
-;; (cloud:send *csound* "fluidProgramSelect giengine1, 1, gisfnum1, 0, 95")
-;; (cloud:send *csound* "fluidProgramSelect giengine1, 2, gisfnum1, 0, 7")
+(cloud:send *csound* "fluidProgramSelect giengine1, 1, gisfnum1, 0, 44")
+(cloud:send *csound* "fluidProgramSelect giengine1, 2, gisfnum1, 0, 0")
 

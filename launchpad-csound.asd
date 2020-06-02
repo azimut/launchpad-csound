@@ -15,7 +15,8 @@
                #:trivia
                #:scheduler
                #:ego
-               #:cm)
+               #:cm
+               #:atomics)
   :components ((:file "package")
                (:file "loop")
                ;;(:file "launchpad-csound")

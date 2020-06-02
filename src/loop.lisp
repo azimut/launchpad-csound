@@ -32,3 +32,7 @@
 (defun stop-io-thread ()
   (when (alivep)
     (bt:destroy-thread (get-io-thread))))
+
+(defun iname (instr dot)
+  (parse-float:parse-float
+   (format nil "~d.~d" instr dot)))
