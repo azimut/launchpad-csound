@@ -1,9 +1,10 @@
 (in-package #:launchpad-csound)
 
 ;; Scenes sharing a long pattern (?
-;; 
 ;; TODO: schedule ahead fix
-;; TODO: time arg on beat top-row
+;; TODO: side lights with state, show current pattern or if pattern has anything
+;; TODO: special light color? root and intervals?
+;; TODO: multiple touches/colors for different effects
 
 (defun make-cycles ()
   (loop :repeat 8 :collect
@@ -39,7 +40,7 @@
   (let ((time (scheduler:sched-quant *scheduler* 2)))
     (scheduler:sched-add *scheduler* time #'top-row-meter)
     (dotimes (idx 8)
-      (scheduler:sched-add *scheduler* time #'beat idx))))
+      (scheduler:sched-add *scheduler* time #'beat time idx))))
 
 (defmethod cloud:disconnect :after ((server patterns))
   (scheduler:sched-stop *scheduler*)
@@ -58,13 +59,14 @@
     (+ ,time (scheduler:sched-time *scheduler*))
     ,function ,@arguments))
 
-(defun top-row-meter ()
+(defun top-row-meter (time)
   (let ((next (nth (index *csound*) (beats *csound*)))
         (x    (+ 104 (cm:pattern-value
                       (nth (index *csound*) (cycles *csound*))))))
     (launchpad:command (list 176 x (launchpad:color :lg)))
     (at next #'launchpad:command (list 176 x 0))
-    (at next #'top-row-meter)))
+    (scheduler:sched-add *scheduler* (+ time next)
+                         #'top-row-meter (+ time next))))
 
 (defun relight-scene (new-scene to-color)
   (alexandria:maphash-keys
@@ -99,6 +101,11 @@
     ((2 3)  .7)
     (t .3)))
 
+;; LOGGING
+#+nil
+(defmethod cloud:schedule :before ((server cloud::csound) instrument &rest rest)
+  (print rest))
+
 (defun step-keys (stepping-scene stepping-column)
   (serapeum:do-hash-table (k v *keys*)
     (destructuring-bind (scene midi) k
@@ -114,13 +121,14 @@
            (ego::pc-relative (+ 48 (* 24 (mod scene 2)))
                              row
                              (ego::scale 0 :yo))
-           (ego::rcosr 30 10 (max scene 1))))))))
+           25))))))
 
-(defun beat (idx)
+(defun beat (time idx)
   (let ((offset (nth idx (beats *csound*)))
         (column (cm:next (nth idx (cycles *csound*)))))
     (step-keys idx column)
-    (at offset #'beat idx)))
+    (scheduler:sched-add *scheduler* (+ offset time)
+                         #'beat (+ offset time) idx)))
 
 (defmethod handle-input ((server patterns) raw-midi)
   (trivia:match raw-midi
