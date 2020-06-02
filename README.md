@@ -1,7 +1,6 @@
 # launchpad-csound
-### _azimut <azimut.github@protonmail.com>_
 
-This is a project to do ... something.
+Instrument thing with Novation's Launchpad Mini and Lisp.
 
 ## License
 
