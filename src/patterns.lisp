@@ -20,8 +20,8 @@
    (cycles :initform (make-cycles)
            :reader   cycles)))
 
-(defvar *scheduler* (make-instance 'scheduler:scheduler))
-(defvar *keys* (make-hash-table :test #'equal :synchronized t))
+(defvar *scheduler* nil)
+(defvar *keys* nil)
 
 (defun remove-key (&rest key)
   (sb-ext:with-locked-hash-table (*keys*)
@@ -38,19 +38,24 @@
 
 (defun schedule-all ()
   (let ((time (scheduler:sched-quant *scheduler* 2)))
-    (scheduler:sched-add *scheduler* time #'top-row-meter)
+    (scheduler:sched-add *scheduler* time #'top-row-meter time)
     (dotimes (idx 8)
       (scheduler:sched-add *scheduler* time #'beat time idx))))
 
 (defmethod cloud:disconnect :after ((server patterns))
-  (scheduler:sched-stop *scheduler*)
-  (scheduler:sched-clear *scheduler*)
+  (when *scheduler*
+    (scheduler:sched-stop *scheduler*)
+    (scheduler:sched-clear *scheduler*))
   (reset-cycles))
 
 (defmethod cloud:connect :after ((server patterns))
-  (launchpad:change-layout :xy)
+  (unless *scheduler*
+    (setf *scheduler* (make-instance 'scheduler:scheduler)))
   (scheduler:sched-run *scheduler*)
-  (clrhash *keys*)
+  (launchpad:change-layout :xy)
+  (if *keys*
+      (clrhash *keys*)
+      (setf *keys* (make-hash-table :test #'equal :synchronized t)))
   (schedule-all))
 
 (defmacro at (time function &rest arguments)
@@ -65,8 +70,7 @@
                       (nth (index *csound*) (cycles *csound*))))))
     (launchpad:command (list 176 x (launchpad:color :lg)))
     (at next #'launchpad:command (list 176 x 0))
-    (scheduler:sched-add *scheduler* (+ time next)
-                         #'top-row-meter (+ time next))))
+    (at next #'top-row-meter (+ time next))))
 
 (defun relight-scene (new-scene to-color)
   (alexandria:maphash-keys
