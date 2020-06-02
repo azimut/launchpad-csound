@@ -1,5 +1,7 @@
 (in-package #:launchpad-csound)
 
+;; Scenes sharing a long pattern (?
+;; 
 ;; TODO: schedule ahead fix
 ;; TODO: time arg on beat top-row
 
@@ -11,7 +13,7 @@
   ((index  :initform 0
            :accessor index
            :documentation "Current SCENE index")
-   (beats  :initform '(2.0 2.0 1.0 1.0 0.5 0.5 0.5 0.25)
+   (beats  :initform '(2.0 2.0 1.0 1.0 0.5 0.5 0.5 0.5)
            :reader   beats
            :documentation "Beat durations for each SCENE")
    (cycles :initform (make-cycles)
@@ -84,6 +86,19 @@
 (defmethod (setf index) :after (new-value (server patterns))
   (relight-scene new-value (launchpad:color :lg)))
 
+(defun imap (scene)
+  (max (case scene
+         ((0 2) 3)
+         ((6) 1)
+         (t 2))
+       1))
+
+(defun idur (scene)
+  (case scene
+    ((0 1) 1.7)
+    ((2 3)  .7)
+    (t .3)))
+
 (defun step-keys (stepping-scene stepping-column)
   (serapeum:do-hash-table (k v *keys*)
     (destructuring-bind (scene midi) k
@@ -92,14 +107,14 @@
                    (= scene stepping-scene))
           (cloud:schedule
            *csound*
-           (iname (+ 1 (mod scene 2)) midi)
+           (iname (imap scene) midi)
            0
-           (* .1 (nth scene (beats *csound*)))
+           (idur scene)
            ;;(+ 60 (car (cm:next scale (+ 1 row))))
-           (ego::pc-relative (+ 48 (* 12 (mod scene 2)))
+           (ego::pc-relative (+ 48 (* 24 (mod scene 2)))
                              row
-                             (ego::scale 0 :aeolian))
-           (ego::rcosr 40 5 5)))))))
+                             (ego::scale 0 :yo))
+           (ego::rcosr 30 10 (max scene 1))))))))
 
 (defun beat (idx)
   (let ((offset (nth idx (beats *csound*)))
