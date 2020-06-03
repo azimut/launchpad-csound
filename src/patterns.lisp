@@ -10,7 +10,7 @@
   (loop :repeat 8 :collect
         (cm:new cm:cycle :of (alexandria:iota 8))))
 
-(defclass patterns (launchpad)
+(defclass patterns (launchpad scheduler)
   ((index  :initform 0
            :accessor index
            :documentation "Current SCENE index")
@@ -21,7 +21,6 @@
            :reader   cycles
            :documentation "Beat counter from 0 to 7 for each SCENE")))
 
-(defvar *scheduler* nil)
 (defvar *keys*      nil)
 
 (defun remove-key (&rest key)
@@ -43,30 +42,18 @@
     (dotimes (idx 8)
       (scheduler:sched-add *scheduler* time #'beat time idx))))
 
-(defmethod cloud:disconnect :after ((server patterns))
-  (when *scheduler*
-    (scheduler:sched-stop *scheduler*)
-    (scheduler:sched-clear *scheduler*))
-  (reset-cycles))
-
 (defun init-keys ()
   (if *keys*
       (clrhash *keys*)
       (setf *keys* (make-hash-table :test #'equal :synchronized t))))
 
+(defmethod cloud:disconnect :after ((server patterns))
+  (reset-cycles))
+
 (defmethod cloud:connect :after ((server patterns))
   (init-keys)
   (launchpad:change-layout :xy)
-  (unless *scheduler*
-    (setf *scheduler* (make-instance 'scheduler:scheduler)))
-  (scheduler:sched-run *scheduler*)
   (schedule-all))
-
-(defmacro at (time function &rest arguments)
-  `(scheduler:sched-add
-    *scheduler*
-    (+ ,time (scheduler:sched-time *scheduler*))
-    ,function ,@arguments))
 
 (defun top-row-meter (time)
   (let ((next (aref (beats *csound*) (index *csound*)))
