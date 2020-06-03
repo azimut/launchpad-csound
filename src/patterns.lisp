@@ -14,7 +14,7 @@
   ((index  :initform 0
            :accessor index
            :documentation "Current SCENE index")
-   (beats  :initform '(2.0 2.0 1.0 1.0 0.5 0.5 0.5 0.5)
+   (beats  :initform #(2.0 2.0 1.0 1.0 0.5 0.5 0.5 0.5)
            :reader   beats
            :documentation "Beat durations for each SCENE")
    (cycles :initform (make-cycles)
@@ -50,7 +50,7 @@
 
 (defmethod cloud:connect :after ((server patterns))
   (unless *scheduler*
-    (setf *scheduler* (make-instance 'scheduler:scheduler)))
+    (setf *scheduler* (make-instance 'scheduler:scheduler )))
   (scheduler:sched-run *scheduler*)
   (launchpad:change-layout :xy)
   (if *keys*
@@ -65,7 +65,7 @@
     ,function ,@arguments))
 
 (defun top-row-meter (time)
-  (let ((next (nth (index *csound*) (beats *csound*)))
+  (let ((next (aref (beats *csound*) (index *csound*)))
         (x    (+ 104 (cm:pattern-value
                       (nth (index *csound*) (cycles *csound*))))))
     (launchpad:command (list 176 x (launchpad:color :lg)))
@@ -95,7 +95,8 @@
 (defun imap (scene)
   (max (case scene
          ((0 2) 3)
-         ((6) 1)
+         ((7) 1)
+         ((6) 4)
          (t 2))
        1))
 
@@ -110,25 +111,30 @@
 (defmethod cloud:schedule :before ((server cloud::csound) instrument &rest rest)
   (print rest))
 
-(defun step-keys (stepping-scene stepping-column)
-  (serapeum:do-hash-table (k v *keys*)
-    (destructuring-bind (scene midi) k
-      (destructuring-bind (row col) v
-        (when (and (= col stepping-column)
-                   (= scene stepping-scene))
-          (cloud:schedule
-           *csound*
-           (iname (imap scene) midi)
-           0
-           (idur scene)
-           ;;(+ 60 (car (cm:next scale (+ 1 row))))
-           (ego::pc-relative (+ 48 (* 24 (mod scene 2)))
-                             row
-                             (ego::scale 0 :yo))
-           25))))))
+(let* ((scale (ego::scale 4 :phrygian))
+       (cscale (cm:new cm:cycle :of scale)))
+  (defun step-keys (stepping-scene stepping-column)
+    (serapeum:do-hash-table (k v *keys*)
+      (destructuring-bind (scene midi) k
+        (destructuring-bind (row col) v
+          (when (and (= col stepping-column)
+                     (= scene stepping-scene))
+            (cloud:schedule
+             *csound*
+             (iname (imap scene) midi)
+             0
+             (+ (idur scene) (ego::cosr .2 .1 (+ 1 scene)))
+             (if (or (= scene 4)
+                     (= scene 0)
+                     (= scene 2))
+                 (+ 60 (car (cm:next cscale (+ 1 row))))
+                 (ego::pc-relative (+ 48 (* 24 (mod scene 2)))
+                                   row
+                                   scale))
+             (ego::rcosr 0 2q (+ 1 scene)))))))))
 
 (defun beat (time idx)
-  (let ((offset (nth idx (beats *csound*)))
+  (let ((offset (aref (beats *csound*) idx))
         (column (cm:next (nth idx (cycles *csound*)))))
     (step-keys idx column)
     (scheduler:sched-add *scheduler* (+ offset time)

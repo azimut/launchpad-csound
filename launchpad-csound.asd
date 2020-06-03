@@ -20,4 +20,5 @@
   :components ((:file "package")
                (:file "loop")
                (:file "launchpad-csound")
-               (:file "patterns")))
+               (:file "patterns")
+               (:file "splitted")))

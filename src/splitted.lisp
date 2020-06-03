@@ -16,18 +16,14 @@
   "T if left on drum layout"
   (<= 36 note 67))
 
-(defun keys ()
-  "list of keys on drum layout"
-  (alexandria:iota (* 8 8) :start 36))
-
 (defun get-roots (root)
   (remove-if-not ^(= (mod _ 12) (mod root 12))
-                 (keys)))
+                 (launchpad:get-keys :drum)))
 
 (defun removed-roots (root scale)
   (let ((pc (remove root (ego::scale root scale))))
     (remove-if-not ^(member (mod _ 12) pc)
-                   (keys))))
+                   (launchpad:get-keys :drum))))
 
 (defun light-up (root scale)
   (mapcar (lambda (_) (launchpad:raw-command
