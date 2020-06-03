@@ -18,10 +18,11 @@
            :reader   beats
            :documentation "Beat durations for each SCENE")
    (cycles :initform (make-cycles)
-           :reader   cycles)))
+           :reader   cycles
+           :documentation "Beat counter from 0 to 7 for each SCENE")))
 
 (defvar *scheduler* nil)
-(defvar *keys* nil)
+(defvar *keys*      nil)
 
 (defun remove-key (&rest key)
   (sb-ext:with-locked-hash-table (*keys*)
@@ -48,14 +49,17 @@
     (scheduler:sched-clear *scheduler*))
   (reset-cycles))
 
-(defmethod cloud:connect :after ((server patterns))
-  (unless *scheduler*
-    (setf *scheduler* (make-instance 'scheduler:scheduler )))
-  (scheduler:sched-run *scheduler*)
-  (launchpad:change-layout :xy)
+(defun init-keys ()
   (if *keys*
       (clrhash *keys*)
-      (setf *keys* (make-hash-table :test #'equal :synchronized t)))
+      (setf *keys* (make-hash-table :test #'equal :synchronized t))))
+
+(defmethod cloud:connect :after ((server patterns))
+  (init-keys)
+  (launchpad:change-layout :xy)
+  (unless *scheduler*
+    (setf *scheduler* (make-instance 'scheduler:scheduler)))
+  (scheduler:sched-run *scheduler*)
   (schedule-all))
 
 (defmacro at (time function &rest arguments)
@@ -131,7 +135,7 @@
                  (ego::pc-relative (+ 48 (* 24 (mod scene 2)))
                                    row
                                    scale))
-             (ego::rcosr 0 2q (+ 1 scene)))))))))
+             (ego::rcosr 0 2 (+ 1 scene)))))))))
 
 (defun beat (time idx)
   (let ((offset (aref (beats *csound*) idx))
