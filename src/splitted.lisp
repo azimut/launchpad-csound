@@ -26,11 +26,9 @@
                    (launchpad:get-keys :drum))))
 
 (defun light-up (root scale)
-  (mapcar (lambda (_) (launchpad:raw-command
-                  (list 144 _ (launchpad:color *light-root*))))
+  (mapcar (lambda (_) (launchpad:raw-command 144 _ (launchpad:color *light-root*)))
           (get-roots root))
-  (mapcar (lambda (_) (launchpad:raw-command
-                  (list 144 _ (launchpad:color *light-scale*))))
+  (mapcar (lambda (_) (launchpad:raw-command 144 _ (launchpad:color *light-scale*)))
           (removed-roots root scale)))
 
 (let ((root  3)
@@ -42,9 +40,9 @@
     (trivia:match raw-midi
       ((list 144 note 127)
        (progn (print (list note (mod note 12)))
-              (launchpad:raw-command (list 144 note (launchpad:color *light-pressure*)))
+              (launchpad:raw-command 144 note (launchpad:color *light-pressure*))
               (cloud:schedule server (iname 1 note) 0 60 note 60)))
       ((list 144 note 0)
-       (progn (launchpad:raw-command (list 128 note 0))
+       (progn (launchpad:raw-command 128 note 0)
               (cloud:schedule server (iname 1 note) 0 0 note 0))
        (light-up root scale)))))
