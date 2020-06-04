@@ -115,7 +115,6 @@
   (eat time #'launchpad:button-automap-on column (launchpad:color :lg))
   (eat (+ duration time) #'launchpad:button-automap-off column))
 
-;; TODO: remove cm:cycle for just a rotating list param
 (defun beat (time idx dur cycle)
   (let ((column (first cycle))
         (next-time (+ dur time)))
