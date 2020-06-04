@@ -6,20 +6,13 @@
 
 (defvar *keys* nil)
 
-(defun make-cycles ()
-  (loop :repeat 8 :collect
-        (cm:new cm:cycle :of (alexandria:iota 8))))
-
 (defclass patterns (launchpad scheduler)
   ((index  :initform 0
            :accessor index
            :documentation "Current SCENE index")
    (beats  :initform #(2.0 2.0 1.0 1.0 0.5 0.5 0.25 0.25)
            :reader   beats
-           :documentation "Beat durations for each SCENE")
-   (cycles :initform (make-cycles)
-           :reader   cycles
-           :documentation "Used for beat counter light")))
+           :documentation "Beat durations for each SCENE")))
 
 (defun remove-key (&rest key)
   (sb-ext:with-locked-hash-table (*keys*)
@@ -30,23 +23,16 @@
       (or (gethash key *keys*)
           (setf (gethash key *keys*) (list row col))))))
 
-(defun reset-cycles ()
-  (dolist (cycle (cycles *csound*))
-    (cm:next cycle t)))
-
 (defun schedule-all ()
   (let ((time (scheduler:sched-quant *scheduler* 2)))
     (dotimes (idx 8)
       (let ((duration (aref (beats *csound*) idx)))
-        (eat time #'beat time idx duration)))))
+        (eat time #'beat time idx duration (alexandria:iota 8))))))
 
 (defun init-keys-hash ()
   (if *keys*
       (clrhash *keys*)
       (setf *keys* (make-hash-table :test #'equal :synchronized t))))
-
-(defmethod cloud:disconnect :after ((server patterns))
-  (reset-cycles))
 
 (defmethod cloud:connect :after ((server patterns))
   (init-keys-hash)
@@ -58,10 +44,9 @@
    (lambda (key)
      (destructuring-bind (scene note) key
        (when (= scene new-scene)
-         (launchpad:raw-command
-          (list (if (zerop to-color) 128 144)
-                note
-                to-color)))))
+         (launchpad:raw-command (if (zerop to-color) #x80 #x90)
+                                note
+                                to-color))))
    *keys*))
 
 (defun has-keys-p (scene)
@@ -70,10 +55,9 @@
             :test #'=))
 
 (defun relight-pages (old-scene)
-  (let ((key (elt (launchpad:get-keys :side-xy) old-scene)))
-    (if (has-keys-p old-scene)
-        (launchpad:raw-command (list 144 key (launchpad:color :lg)))
-        (launchpad:raw-command (list 128 key 0)))))
+  (if (has-keys-p old-scene)
+      (launchpad:button-scene-xy-on  old-scene (launchpad:color :lg))
+      (launchpad:button-scene-xy-off old-scene)))
 
 (defmethod (setf index) :before (new-value (server patterns))
   (check-type new-value (integer 0 7))
@@ -124,21 +108,24 @@
                                row
                                scale)
              ;;(ego::rcosr 30 10 (+ 1 scene))
-             30
+             20
              )))))))
 
 (defun light-beat (time duration column)
-  (eat time #'launchpad::button-automap-on column)
-  (eat (+ duration time) #'launchpad::button-automap-off column))
+  (eat time #'launchpad:button-automap-on column (launchpad:color :lg))
+  (eat (+ duration time) #'launchpad:button-automap-off column))
 
 ;; TODO: remove cm:cycle for just a rotating list param
-(defun beat (time idx dur)
-  (let ((column (cm:next (nth idx (cycles *csound*))))
+(defun beat (time idx dur cycle)
+  (let ((column (first cycle))
         (next-time (+ dur time)))
     (when (= idx (index *csound*))
       (light-beat time dur column))
     (eat time #'step-keys idx column)
-    (eat next-time #'beat next-time idx dur)))
+    (eat next-time #'beat next-time idx dur (alexandria:rotate (copy-seq cycle) -1))))
+
+(defun key-pressed-p (key scene)
+  (gethash (list scene key) *keys*))
 
 (defmethod handle-input ((server patterns) raw-midi)
   (trivia:match raw-midi
@@ -151,12 +138,12 @@
                        (= key 88)
                        (= key 104)
                        (= key 120)))
-     (progn (launchpad:raw-command (list 144 key (launchpad:color :lo)))
+     (progn (launchpad:raw-command #x90 key (launchpad:color :lo))
             (setf (index server) (floor key 16))))
     ((list 144 key 127)
-     (let ((s (index server)))
-       (if (gethash (list s key) *keys*)
-           (progn (launchpad:raw-command (list 128 key 0))
-                  (remove-key s key))
-           (progn (launchpad:raw-command (list 144 key (launchpad:color :lg)))
-                  (add-key s key)))))))
+     (let ((scene (index server)))
+       (if (key-pressed-p key scene)
+           (progn (launchpad:raw-command #x80 key 0)
+                  (remove-key scene key))
+           (progn (launchpad:raw-command #x90 key (launchpad:color :lg))
+                  (add-key scene key)))))))
