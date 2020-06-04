@@ -27,7 +27,7 @@
   (let ((time (scheduler:sched-quant *scheduler* 2)))
     (dotimes (idx 8)
       (let ((duration (aref (beats *csound*) idx)))
-        (eat time #'beat time idx duration (alexandria:iota 8))))))
+        (eat time #'beat time idx duration (a:iota 8))))))
 
 (defun init-keys-hash ()
   (if *keys*
@@ -40,7 +40,7 @@
   (schedule-all))
 
 (defun relight-scene (new-scene to-color)
-  (alexandria:maphash-keys
+  (a:maphash-keys
    (lambda (key)
      (destructuring-bind (scene note) key
        (when (= scene new-scene)
@@ -50,7 +50,7 @@
    *keys*))
 
 (defun has-keys-p (scene)
-  (position scene (alexandria:hash-table-keys *keys*)
+  (position scene (a:hash-table-keys *keys*)
             :key #'car
             :test #'=))
 
@@ -122,7 +122,8 @@
     (when (= idx (index *csound*))
       (light-beat time dur column))
     (eat time #'step-keys idx column)
-    (eat next-time #'beat next-time idx dur (alexandria:rotate (copy-seq cycle) -1))))
+    (eat next-time #'beat
+         next-time idx dur (a:rotate (copy-seq cycle) -1))))
 
 (defun key-pressed-p (key scene)
   (gethash (list scene key) *keys*))
@@ -130,16 +131,16 @@
 (defmethod handle-input ((server patterns) raw-midi)
   (trivia:match raw-midi
     ((trivia:guard (list 144 key 127)
-                   (or (= key 8)
-                       (= key 24)
-                       (= key 40)
-                       (= key 56)
-                       (= key 72)
-                       (= key 88)
+                   (or (= key   8)
+                       (= key  24)
+                       (= key  40)
+                       (= key  56)
+                       (= key  72)
+                       (= key  88)
                        (= key 104)
                        (= key 120)))
      (progn (launchpad:raw-command #x90 key (launchpad:color :lo))
-            (setf (index server) (floor key 16))))
+            (setf (index server) (launchpad:xy key))))
     ((list 144 key 127)
      (let ((scene (index server)))
        (if (key-pressed-p key scene)

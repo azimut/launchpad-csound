@@ -1,4 +1,6 @@
 ;;;; package.lisp
 
-(uiop:define-package #:launchpad-csound
-  (:use #:cl #:cl-arrows #:alexandria))
+(cl:defpackage #:launchpad-csound
+  (:use #:cl #:cl-arrows)
+  (:local-nicknames (#:a #:alexandria)
+                    (#:l #:launchpad)))
