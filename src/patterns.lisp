@@ -1,9 +1,10 @@
 (in-package #:launchpad-csound)
 
 ;; Scenes sharing a long pattern (?
-;; TODO: side lights with state, show current pattern or if pattern has anything
 ;; TODO: special light color? root and intervals?
 ;; TODO: multiple touches/colors for different effects
+
+(defvar *keys* nil)
 
 (defun make-cycles ()
   (loop :repeat 8 :collect
@@ -18,9 +19,7 @@
            :documentation "Beat durations for each SCENE")
    (cycles :initform (make-cycles)
            :reader   cycles
-           :documentation "Beat counter from 0 to 7 for each SCENE")))
-
-(defvar *keys*      nil)
+           :documentation "Used for beat counter light")))
 
 (defun remove-key (&rest key)
   (sb-ext:with-locked-hash-table (*keys*)
@@ -38,7 +37,8 @@
 (defun schedule-all ()
   (let ((time (scheduler:sched-quant *scheduler* 2)))
     (dotimes (idx 8)
-      (scheduler:sched-add *scheduler* time #'beat time idx))))
+      (let ((duration (aref (beats *csound*) idx)))
+        (eat time #'beat time idx duration)))))
 
 (defun init-keys-hash ()
   (if *keys*
@@ -64,9 +64,21 @@
                 to-color)))))
    *keys*))
 
+(defun has-keys-p (scene)
+  (position scene (alexandria:hash-table-keys *keys*)
+            :key #'car
+            :test #'=))
+
+(defun relight-pages (old-scene)
+  (let ((key (elt (launchpad:get-keys :side-xy) old-scene)))
+    (if (has-keys-p old-scene)
+        (launchpad:raw-command (list 144 key (launchpad:color :lg)))
+        (launchpad:raw-command (list 128 key 0)))))
+
 (defmethod (setf index) :before (new-value (server patterns))
   (check-type new-value (integer 0 7))
-  (relight-scene (slot-value server 'index) 0))
+  (relight-scene (slot-value server 'index) 0)
+  (relight-pages (slot-value server 'index)))
 (defmethod (setf index) (new-value (server patterns))
   (let ((old-value (slot-value *csound* 'index)))
     (atomics:cas (slot-value *csound* 'index) old-value new-value)))
@@ -98,31 +110,35 @@
     (serapeum:do-hash-table (k v *keys*)
       (destructuring-bind (scene midi) k
         (destructuring-bind (row col) v
-          (when (and (= col stepping-column)
-                     (= scene stepping-scene))
+          (when (and (= scene stepping-scene)
+                     (= col stepping-column))
             (cloud:schedule
              *csound*
              (iname (imap scene) midi)
              0
-             (+ (idur scene) (ego::cosr .2 .1 (+ scene)))
+             (idur scene) ;;(+ (idur scene) (ego::cosr .2 .1 (+ scene)))
              #+nil
              (if (or (= scene 4))
                  (+ 60 (car (cm:next cscale (+ 1 row)))))
              (ego::pc-relative (+ 48 (* 24 (mod scene 2)))
                                row
                                scale)
-             (ego::rcosr 30 10 (+ 1 scene)))))))))
+             ;;(ego::rcosr 30 10 (+ 1 scene))
+             30
+             )))))))
 
-(defun beat (time idx)
-  (let ((offset (aref (beats *csound*) idx))
-        (column (cm:next (nth idx (cycles *csound*)))))
-    ;;#+nil
+(defun light-beat (time duration column)
+  (eat time #'launchpad::button-automap-on column)
+  (eat (+ duration time) #'launchpad::button-automap-off column))
+
+;; TODO: remove cm:cycle for just a rotating list param
+(defun beat (time idx dur)
+  (let ((column (cm:next (nth idx (cycles *csound*))))
+        (next-time (+ dur time)))
     (when (= idx (index *csound*))
-      (launchpad::button-automap-on column)
-      (eat (+ offset time) #'launchpad::button-automap-off column))
+      (light-beat time dur column))
     (eat time #'step-keys idx column)
-    (eat (+ offset time)
-         #'beat (+ offset time) idx)))
+    (eat next-time #'beat next-time idx dur)))
 
 (defmethod handle-input ((server patterns) raw-midi)
   (trivia:match raw-midi
@@ -135,18 +151,8 @@
                        (= key 88)
                        (= key 104)
                        (= key 120)))
-     (progn (launchpad:raw-command (list 144 key (launchpad:color :lg)))
+     (progn (launchpad:raw-command (list 144 key (launchpad:color :lo)))
             (setf (index server) (floor key 16))))
-    ((trivia:guard (list 144 key 0)
-                   (or (= key 8)
-                       (= key 24)
-                       (= key 40)
-                       (= key 56)
-                       (= key 72)
-                       (= key 88)
-                       (= key 104)
-                       (= key 120)))
-     (progn (launchpad:raw-command (list 128 key 0))))
     ((list 144 key 127)
      (let ((s (index server)))
        (if (gethash (list s key) *keys*)
@@ -154,14 +160,3 @@
                   (remove-key s key))
            (progn (launchpad:raw-command (list 144 key (launchpad:color :lg)))
                   (add-key s key)))))))
-
-
-(defun atest (time)
-  (let ((now (scheduler:sched-time *scheduler*)))
-    (format t "ARG: ~F~%SCH: ~F~%DIF: ~F~%" time now (- now time)))
-  (values))
-
-(defun test ()
-  (let ((time (scheduler:sched-time *scheduler*)))
-    (format t "TIM: ~F~%" time)
-    (scheduler:sched-add *scheduler* (+ time 1) #'atest (+ time 1))))
