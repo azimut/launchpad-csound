@@ -13,6 +13,12 @@
     (+ ,time (scheduler:sched-time *scheduler*))
     ,function ,@arguments))
 
+(defmacro eat (time function &rest arguments)
+  `(scheduler:sched-add
+    *scheduler*
+    ,time
+    ,function ,@arguments))
+
 (defmethod cloud:disconnect :after ((server scheduler))
   (when *scheduler*
     (scheduler:sched-stop *scheduler*)

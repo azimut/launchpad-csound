@@ -1,7 +1,6 @@
 (in-package #:launchpad-csound)
 
 ;; Scenes sharing a long pattern (?
-;; TODO: schedule ahead fix
 ;; TODO: side lights with state, show current pattern or if pattern has anything
 ;; TODO: special light color? root and intervals?
 ;; TODO: multiple touches/colors for different effects
@@ -14,7 +13,7 @@
   ((index  :initform 0
            :accessor index
            :documentation "Current SCENE index")
-   (beats  :initform #(2.0 2.0 1.0 1.0 0.5 0.5 0.5 0.5)
+   (beats  :initform #(2.0 2.0 1.0 1.0 0.5 0.5 0.25 0.25)
            :reader   beats
            :documentation "Beat durations for each SCENE")
    (cycles :initform (make-cycles)
@@ -38,11 +37,10 @@
 
 (defun schedule-all ()
   (let ((time (scheduler:sched-quant *scheduler* 2)))
-    (scheduler:sched-add *scheduler* time #'top-row-meter time)
     (dotimes (idx 8)
       (scheduler:sched-add *scheduler* time #'beat time idx))))
 
-(defun init-keys ()
+(defun init-keys-hash ()
   (if *keys*
       (clrhash *keys*)
       (setf *keys* (make-hash-table :test #'equal :synchronized t))))
@@ -51,17 +49,9 @@
   (reset-cycles))
 
 (defmethod cloud:connect :after ((server patterns))
-  (init-keys)
+  (init-keys-hash)
   (launchpad:change-layout :xy)
   (schedule-all))
-
-(defun top-row-meter (time)
-  (let ((next (aref (beats *csound*) (index *csound*)))
-        (x    (+ 104 (cm:pattern-value
-                      (nth (index *csound*) (cycles *csound*))))))
-    (launchpad:command (list 176 x (launchpad:color :lg)))
-    (at next #'launchpad:command (list 176 x 0))
-    (at next #'top-row-meter (+ time next))))
 
 (defun relight-scene (new-scene to-color)
   (alexandria:maphash-keys
@@ -114,22 +104,25 @@
              *csound*
              (iname (imap scene) midi)
              0
-             (+ (idur scene) (ego::cosr .2 .1 (+ 1 scene)))
-             (if (or (= scene 4)
-                     (= scene 0)
-                     (= scene 2))
-                 (+ 60 (car (cm:next cscale (+ 1 row))))
-                 (ego::pc-relative (+ 48 (* 24 (mod scene 2)))
-                                   row
-                                   scale))
-             (ego::rcosr 0 2 (+ 1 scene)))))))))
+             (+ (idur scene) (ego::cosr .2 .1 (+ scene)))
+             #+nil
+             (if (or (= scene 4))
+                 (+ 60 (car (cm:next cscale (+ 1 row)))))
+             (ego::pc-relative (+ 48 (* 24 (mod scene 2)))
+                               row
+                               scale)
+             (ego::rcosr 30 10 (+ 1 scene)))))))))
 
 (defun beat (time idx)
   (let ((offset (aref (beats *csound*) idx))
         (column (cm:next (nth idx (cycles *csound*)))))
-    (step-keys idx column)
-    (scheduler:sched-add *scheduler* (+ offset time)
-                         #'beat (+ offset time) idx)))
+    ;;#+nil
+    (when (= idx (index *csound*))
+      (launchpad::button-automap-on column)
+      (eat (+ offset time) #'launchpad::button-automap-off column))
+    (eat time #'step-keys idx column)
+    (eat (+ offset time)
+         #'beat (+ offset time) idx)))
 
 (defmethod handle-input ((server patterns) raw-midi)
   (trivia:match raw-midi
@@ -163,3 +156,12 @@
                   (add-key s key)))))))
 
 
+(defun atest (time)
+  (let ((now (scheduler:sched-time *scheduler*)))
+    (format t "ARG: ~F~%SCH: ~F~%DIF: ~F~%" time now (- now time)))
+  (values))
+
+(defun test ()
+  (let ((time (scheduler:sched-time *scheduler*)))
+    (format t "TIM: ~F~%" time)
+    (scheduler:sched-add *scheduler* (+ time 1) #'atest (+ time 1))))
