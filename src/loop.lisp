@@ -3,6 +3,9 @@
 (defclass launchpad (cloud::csound)
   ())
 
+(defmethod cloud:disconnect :after ((server launchpad))
+  (stop-io-thread))
+
 (defmethod cloud:connect :before ((server launchpad))
   (start-io-thread))
 
