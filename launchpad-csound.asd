@@ -7,16 +7,15 @@
   :version "0.0.1"
   :serial t
   :pathname "src"
-  :depends-on (#:launchpad
-               #:cloud/udp
-               #:parse-float
+  :depends-on (#:cl-arrows
                #:cl-punch
-               #:cl-arrows
-               #:trivia
-               #:scheduler
-               #:ego
+               #:cloud/udp
                #:cm
-               #:atomics)
+               #:ego
+               #:launchpad
+               #:parse-float
+               #:scheduler
+               #:trivia)
   :components ((:file "package")
                (:file "launchpad-csound")
                (:file "scheduler")

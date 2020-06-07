@@ -63,9 +63,6 @@
   (check-type new-value (integer 0 7))
   (relight-scene (slot-value server 'index) 0)
   (relight-pages (slot-value server 'index)))
-(defmethod (setf index) (new-value (server patterns))
-  (let ((old-value (slot-value *csound* 'index)))
-    (atomics:cas (slot-value *csound* 'index) old-value new-value)))
 (defmethod (setf index) :after (new-value (server patterns))
   (relight-scene new-value (launchpad:color :lg)))
 
