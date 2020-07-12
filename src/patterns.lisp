@@ -14,6 +14,11 @@
            :reader   beats
            :documentation "Beat durations for each SCENE")))
 
+(defmethod change-class :after (obj (new (eql 'patterns)) &rest initargs)
+  (declare (ignore initargs))
+  (launchpad:reset)
+  (launchpad:change-layout :xy))
+
 (defun remove-key (&rest key)
   (sb-ext:with-locked-hash-table (*keys*)
     (remhash key *keys*)))
@@ -127,15 +132,15 @@
 
 (defmethod launchpad:handle-input :after ((server patterns) raw-midi)
   (trivia:match raw-midi
-    ((trivia:guard (list 144 key 127)
-                   (or (= key   8)
-                       (= key  24)
-                       (= key  40)
-                       (= key  56)
-                       (= key  72)
-                       (= key  88)
-                       (= key 104)
-                       (= key 120)))
+    ((trivia:guard
+      (list 144 key 127) (or (= key   8)
+                             (= key  24)
+                             (= key  40)
+                             (= key  56)
+                             (= key  72)
+                             (= key  88)
+                             (= key 104)
+                             (= key 120)))
      (progn (launchpad:raw-command #x90 key (launchpad:color :lo))
             (setf (index server) (launchpad:xy key))))
     ((list 144 key 127)

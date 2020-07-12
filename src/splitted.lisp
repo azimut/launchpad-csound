@@ -3,6 +3,10 @@
 (defclass splitted (main)
   ())
 
+(defmethod change-class :after (obj (new (eql 'splitted)) &rest initargs)
+  (declare (ignore initargs))
+  (launchpad:reset)
+  (launchpad:change-layout :drum))
 (defmethod cloud:connect :after ((server splitted))
   (launchpad:change-layout :drum))
 
@@ -39,8 +43,7 @@
   (defmethod launchpad:handle-input :after ((server splitted) raw-midi)
     (trivia:match raw-midi
       ((list 144 note 127)
-       (progn (print (list note (mod note 12)))
-              (launchpad:raw-command 144 note (launchpad:color *light-pressure*))
+       (progn (launchpad:raw-command 144 note (launchpad:color *light-pressure*))
               (cloud:schedule server (iname 1 note) 0 60 note 60)))
       ((list 144 note 0)
        (progn (launchpad:raw-command 128 note 0)
