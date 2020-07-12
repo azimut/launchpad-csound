@@ -6,7 +6,7 @@
 
 (defvar *keys* nil)
 
-(defclass patterns (launchpad scheduler)
+(defclass patterns (main scheduler)
   ((index  :initform 0
            :accessor index
            :documentation "Current SCENE index")
@@ -115,7 +115,8 @@
 (defun beat (time idx dur cycle)
   (let ((column (first cycle))
         (next-time (+ dur time)))
-    (when (= idx (index *csound*))
+    (when (and (slot-exists-p *csound* 'index)
+               (= idx (index *csound*)))
       (light-beat time dur column))
     (eat time #'step-keys idx column)
     (eat next-time #'beat
@@ -124,7 +125,7 @@
 (defun key-pressed-p (key scene)
   (gethash (list scene key) *keys*))
 
-(defmethod handle-input ((server patterns) raw-midi)
+(defmethod launchpad:handle-input :after ((server patterns) raw-midi)
   (trivia:match raw-midi
     ((trivia:guard (list 144 key 127)
                    (or (= key   8)

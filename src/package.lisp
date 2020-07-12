@@ -3,4 +3,7 @@
 (cl:defpackage #:launchpad-csound
   (:use #:cl #:cl-arrows)
   (:local-nicknames (#:a #:alexandria)
-                    (#:l #:launchpad)))
+                    (#:l #:launchpad))
+  (:export #:main
+           #:patterns
+           #:splitted))

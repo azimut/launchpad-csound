@@ -1,6 +1,6 @@
 (in-package #:launchpad-csound)
 
-(defclass splitted (launchpad)
+(defclass splitted (main)
   ())
 
 (defmethod cloud:connect :after ((server splitted))
@@ -36,7 +36,7 @@
   ;; (cloud:reconnect *csound*)
   ;; (cl-rtmidi::with-midi-oss-out (cl-rtmidi:*default-midi-out-stream* "/dev/midi1")
   ;;   (light-up root scale))
-  (defmethod handle-input ((server splitted) raw-midi)
+  (defmethod launchpad:handle-input :after ((server splitted) raw-midi)
     (trivia:match raw-midi
       ((list 144 note 127)
        (progn (print (list note (mod note 12)))
