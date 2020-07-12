@@ -16,6 +16,7 @@
 
 (defmethod change-class :after (obj (new (eql 'patterns)) &rest initargs)
   (declare (ignore initargs))
+  (relight-scene 0 (launchpad:color :lg))
   (launchpad:reset)
   (launchpad:change-layout :xy))
 
@@ -39,9 +40,9 @@
       (clrhash *keys*)
       (setf *keys* (make-hash-table :test #'equal :synchronized t))))
 
-(defmethod cloud:connect :after ((server patterns))
-  (init-keys-hash)
+(defmethod launchpad:connect :after ((server patterns))
   (launchpad:change-layout :xy)
+  (init-keys-hash)
   (schedule-all))
 
 (defun relight-scene (new-scene to-color)

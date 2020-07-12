@@ -19,12 +19,12 @@
     ,time
     ,function ,@arguments))
 
-(defmethod cloud:disconnect :after ((server scheduler))
+(defmethod launchpad:disconnect :after ((server scheduler))
   (when *scheduler*
     (scheduler:sched-stop *scheduler*)
     (scheduler:sched-clear *scheduler*)))
 
-(defmethod cloud:connect :after ((server scheduler))
+(defmethod launchpad:connect :after ((server scheduler))
   (unless *scheduler*
     (setf *scheduler* (make-instance 'scheduler:scheduler)))
   (scheduler:sched-run *scheduler*))

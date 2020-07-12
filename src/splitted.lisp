@@ -7,7 +7,8 @@
   (declare (ignore initargs))
   (launchpad:reset)
   (launchpad:change-layout :drum))
-(defmethod cloud:connect :after ((server splitted))
+
+(defmethod launchpad:connect :after ((server splitted))
   (launchpad:change-layout :drum))
 
 (cl-punch:enable-punch-syntax)
@@ -37,9 +38,6 @@
 
 (let ((root  3)
       (scale :minor))
-  ;; (cloud:reconnect *csound*)
-  ;; (cl-rtmidi::with-midi-oss-out (cl-rtmidi:*default-midi-out-stream* "/dev/midi1")
-  ;;   (light-up root scale))
   (defmethod launchpad:handle-input :after ((server splitted) raw-midi)
     (trivia:match raw-midi
       ((list 144 note 127)
