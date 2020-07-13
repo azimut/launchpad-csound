@@ -1,10 +1,16 @@
 # launchpad-csound
 
-Instrument thing with Novation's Launchpad Mini and Lisp.
+""""Instrument"""" thing with Novation's Launchpad Mini and Lisp.
 
 ## Usage
 
+``` shell
+> csound do.csd
+```
+
 ``` common-lisp
+(ql:quickload :launchpad-csound)
+(in-package :launchpad-csound)
 (setf *csound* (make-instance 'patterns))
 (cloud:connect *csound*)
 ```
