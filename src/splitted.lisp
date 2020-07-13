@@ -39,17 +39,11 @@
   (mapcar (lambda (_) (launchpad:raw-command 144 _ (launchpad:color *light-scale*)))
           (removed-roots root mode layout)))
 
-(defparameter *preset*
-  (list (a:iota 100)
-        (a:iota 100)
-        (a:iota 100)
-        (a:iota 100)))
-
 (defmethod launchpad:handle-input :after ((server splitted) raw-midi)
   (let ((i 3))
     (trivia:match raw-midi
-      ((list 176 104 127) (cloud:schedule *csound* 101 0 .1 i (car (setf (elt *preset* i) (a:rotate (copy-seq (elt *preset* i)) -1)))))
-      ((list 176 105 127) (cloud:schedule *csound* 101 0 .1 i (car (setf (elt *preset* i) (a:rotate (copy-seq (elt *preset* i)) +1)))))
+      ((list 176 104 127) (prev-program i))
+      ((list 176 105 127) (next-program i))
       ((list 144 100 127) (change-class server (next-class)))
       ((list 144 note 127)
        (progn (launchpad:raw-command 144 note (launchpad:color *light-pressure*))

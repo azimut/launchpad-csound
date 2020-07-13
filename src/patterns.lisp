@@ -131,8 +131,8 @@
 (defmethod launchpad:handle-input :after ((server patterns) raw-midi)
   (let ((i (mod (index server) 4)))
     (trivia:match raw-midi
-      ((list 176 104 127) (cloud:schedule *csound* 101 0 .1 (+ 1 i) (car (setf (elt *preset* i) (a:rotate (copy-seq (elt *preset* i)) -1)))))
-      ((list 176 105 127) (cloud:schedule *csound* 101 0 .1 (+ 1 i) (car (setf (elt *preset* i) (a:rotate (copy-seq (elt *preset* i)) +1)))))
+      ((list 176 104 127) (prev-program i))
+      ((list 176 105 127) (next-program i))
       ((list 144 8 127) (change-class server (next-class)))
       ((trivia:guard              ; Scene Buttons
         (list 144 key 127) (or (= key  24)
