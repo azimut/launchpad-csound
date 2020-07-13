@@ -30,16 +30,6 @@ gisfnum1 fluidLoad "/home/sendai/Downloads/FatBoy-v0.786.sf2", giengine1, 1
 ;; gisfnum2 fluidLoad "/home/sendai/Downloads/EarthBound.sf2", giengine2, 1
 ;;         fluidProgramSelect giengine2, 1, gisfnum2, 0, 10
 
-opcode fluidProgramSelect_k, 0, kkkkk
-  keng, kchn, ksf2, kbnk, kpre xin
-        igoto     skipInit
-  doInit:
-        fluidProgramSelect i(keng), i(kchn), i(ksf2), i(kbnk), i(kpre)
-        reinit    doInit
-        rireturn
-  skipInit:
-endop
-
 instr 1
   ikey init p4
   ivel init p5
@@ -62,10 +52,6 @@ instr 4
   ikey init p4
   ivel init p5
   fluidNote giengine1, 4, ikey, ivel
-endin
-
-instr 101
-  fluidProgramSelect_k giengine1, p4, gisfnum1, 0, p5
 endin
 
 instr 99
