@@ -39,12 +39,22 @@
   (mapcar (lambda (_) (launchpad:raw-command 144 _ (launchpad:color *light-scale*)))
           (removed-roots root mode layout)))
 
+(defparameter *preset*
+  (list (a:iota 100)
+        (a:iota 100)
+        (a:iota 100)
+        (a:iota 100)))
+
 (defmethod launchpad:handle-input :after ((server splitted) raw-midi)
-  (trivia:match raw-midi
-    ((list 144 note 127)
-     (progn (launchpad:raw-command 144 note (launchpad:color *light-pressure*))
-            (cloud:schedule server (iname 1 note) 0 60 note 60)))
-    ((list 144 note 0)
-     (progn (launchpad:raw-command 128 note 0)
-            (cloud:schedule server (iname 1 note) 0 0 note 0))
-     (light-up (root server) (mode server) (layout server)))))
+  (let ((i 3))
+    (trivia:match raw-midi
+      ((list 176 104 127) (cloud:schedule *csound* 101 0 .1 i (car (setf (elt *preset* i) (a:rotate (copy-seq (elt *preset* i)) -1)))))
+      ((list 176 105 127) (cloud:schedule *csound* 101 0 .1 i (car (setf (elt *preset* i) (a:rotate (copy-seq (elt *preset* i)) +1)))))
+      ((list 144 100 127) (change-class server (next-class)))
+      ((list 144 note 127)
+       (progn (launchpad:raw-command 144 note (launchpad:color *light-pressure*))
+              (cloud:schedule server (iname i note) 0 60 note (cm:between 60 64))))
+      ((list 144 note 0)
+       (progn (launchpad:raw-command 128 note 0)
+              (cloud:schedule server (iname i note) 0  0 note  0))
+       (light-up (root server) (mode server) (layout server))))))

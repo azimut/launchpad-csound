@@ -15,12 +15,24 @@
            :documentation "Beat durations for each SCENE"))
   (:default-initargs :layout :xy))
 
+(defmethod (setf index) :before (new-value (server patterns))
+  (check-type new-value (integer 0 7))
+  (relight-scene (slot-value server 'index) 0)
+  (relight-pages (slot-value server 'index)))
+(defmethod (setf index) :after (new-value (server patterns))
+  (relight-scene new-value (launchpad:color :lg)))
+
 (defmethod change-class :after (obj (new (eql 'patterns)) &rest initargs)
   (declare (ignore initargs))
   (launchpad:reset)
   (cl-rtmidi:with-midi-oss-out (cl-rtmidi:*default-midi-out-stream* "/dev/midi1")
     (relight-scene 0 (launchpad:color :hg)))
   (setf (layout obj) :xy))
+
+(defmethod launchpad:connect :after ((server patterns))
+  (setf (layout server) :xy)
+  (init-keys-hash)
+  (schedule-all server))
 
 (defun init-keys-hash ()
   (if *keys*
@@ -41,16 +53,12 @@
       (or (gethash key *keys*)
           (setf (gethash key *keys*) (list row col))))))
 
-(defun schedule-all ()
+(defun schedule-all (server)
+  (scheduler:sched-clear *scheduler*)
   (let ((time (scheduler:sched-quant *scheduler* 2)))
     (dotimes (idx 8)
-      (let ((duration (aref (beats *csound*) idx)))
+      (let ((duration (aref (beats server) idx)))
         (eat time #'beat time idx duration (a:iota 8))))))
-
-(defmethod launchpad:connect :after ((server patterns))
-  (setf (layout server) :xy)
-  (init-keys-hash)
-  (schedule-all))
 
 (defun relight-scene (new-scene to-color)
   (a:maphash-keys
@@ -66,13 +74,6 @@
   (if (has-keys-p old-scene)
       (launchpad:button-scene-xy-on  old-scene (launchpad:color :lg))
       (launchpad:button-scene-xy-off old-scene)))
-
-(defmethod (setf index) :before (new-value (server patterns))
-  (check-type new-value (integer 0 7))
-  (relight-scene (slot-value server 'index) 0)
-  (relight-pages (slot-value server 'index)))
-(defmethod (setf index) :after (new-value (server patterns))
-  (relight-scene new-value (launchpad:color :lg)))
 
 (defun imap (scene)
   (max (case scene
@@ -99,7 +100,7 @@
                      (= col stepping-column))
             (cloud:schedule
              *csound*
-             (iname (imap scene) midi)
+             (iname (+ (mod scene 4) 1) midi)
              0
              (idur scene) ;;(+ (idur scene) (ego::cosr .2 .1 (+ scene)))
              #+nil
@@ -108,8 +109,8 @@
              (ego::pc-relative (+ 48 (* 24 (mod scene 2)))
                                row
                                scale)
-             ;;(ego::rcosr 30 10 (+ 1 scene))
-             20
+             ;;(ego::rcosr 60 10 (+ 1 scene))
+             60
              )))))))
 
 (defun light-beat (time duration column)
@@ -128,22 +129,25 @@
          next-time idx dur (a:rotate (copy-seq cycle) -1))))
 
 (defmethod launchpad:handle-input :after ((server patterns) raw-midi)
-  (trivia:match raw-midi
-    ((trivia:guard      ; Scene Buttons
-      (list 144 key 127) (or (= key   8)
-                             (= key  24)
-                             (= key  40)
-                             (= key  56)
-                             (= key  72)
-                             (= key  88)
-                             (= key 104)
-                             (= key 120)))
-     (progn (launchpad:raw-command #x90 key (launchpad:color :lo))
-            (setf (index server) (launchpad:xy key))))
-    ((list 144 key 127) ; Grid Buttons
-     (let ((scene (index server)))
-       (if (key-pressed-p key scene)
-           (progn (launchpad:raw-command #x80 key 0)
-                  (remove-key scene key))
-           (progn (launchpad:raw-command #x90 key (launchpad:color :lg))
-                  (add-key scene key)))))))
+  (let ((i (mod (index server) 4)))
+    (trivia:match raw-midi
+      ((list 176 104 127) (cloud:schedule *csound* 101 0 .1 (+ 1 i) (car (setf (elt *preset* i) (a:rotate (copy-seq (elt *preset* i)) -1)))))
+      ((list 176 105 127) (cloud:schedule *csound* 101 0 .1 (+ 1 i) (car (setf (elt *preset* i) (a:rotate (copy-seq (elt *preset* i)) +1)))))
+      ((list 144 8 127) (change-class server (next-class)))
+      ((trivia:guard              ; Scene Buttons
+        (list 144 key 127) (or (= key  24)
+                               (= key  40)
+                               (= key  56)
+                               (= key  72)
+                               (= key  88)
+                               (= key 104)
+                               (= key 120)))
+       (progn (launchpad:raw-command #x90 key (launchpad:color :lo))
+              (setf (index server) (launchpad:xy key))))
+      ((list 144 key 127)         ; Grid Buttons
+       (let ((scene (index server)))
+         (if (key-pressed-p key scene)
+             (progn (launchpad:raw-command #x80 key 0)
+                    (remove-key scene key))
+             (progn (launchpad:raw-command #x90 key (launchpad:color :lg))
+                    (add-key scene key))))))))

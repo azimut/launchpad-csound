@@ -39,3 +39,7 @@
 (defun iname (instr dot)
   (parse-float:parse-float
    (format nil "~d.~d" instr dot)))
+
+(let ((classes (cm:new cm:cycle :of '(patterns splitted))))
+  (defun next-class ()
+    (cm:next classes)))
