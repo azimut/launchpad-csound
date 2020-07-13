@@ -1,15 +1,18 @@
 (in-package #:launchpad-csound)
 
 (defclass splitted (main)
-  ())
+  ()
+  (:default-initargs :layout :drum))
 
 (defmethod change-class :after (obj (new (eql 'splitted)) &rest initargs)
   (declare (ignore initargs))
   (launchpad:reset)
-  (launchpad:change-layout :drum))
+  (launchpad:connect obj)
+  (cl-rtmidi:with-midi-oss-out (cl-rtmidi:*default-midi-out-stream* "/dev/midi1")
+    (light-up (root obj) (mode obj) (layout obj))))
 
-(defmethod launchpad:connect :after ((server splitted))
-  (launchpad:change-layout :drum))
+(defmethod launchpad:connect :after ((obj splitted))
+  (setf (layout obj) :drum))
 
 (cl-punch:enable-punch-syntax)
 
@@ -21,29 +24,27 @@
   "T if left on drum layout"
   (<= 36 note 67))
 
-(defun get-roots (root)
+(defun get-roots (root layout)
   (remove-if-not ^(= (mod _ 12) (mod root 12))
-                 (launchpad:get-keys :drum)))
+                 (launchpad:get-keys layout)))
 
-(defun removed-roots (root scale)
-  (let ((pc (remove root (ego::scale root scale))))
+(defun removed-roots (root mode layout)
+  (let ((pc (remove root (ego::scale root mode))))
     (remove-if-not ^(member (mod _ 12) pc)
-                   (launchpad:get-keys :drum))))
+                   (launchpad:get-keys layout))))
 
-(defun light-up (root scale)
+(defun light-up (root mode layout)
   (mapcar (lambda (_) (launchpad:raw-command 144 _ (launchpad:color *light-root*)))
-          (get-roots root))
+          (get-roots root layout))
   (mapcar (lambda (_) (launchpad:raw-command 144 _ (launchpad:color *light-scale*)))
-          (removed-roots root scale)))
+          (removed-roots root mode layout)))
 
-(let ((root  3)
-      (scale :minor))
-  (defmethod launchpad:handle-input :after ((server splitted) raw-midi)
-    (trivia:match raw-midi
-      ((list 144 note 127)
-       (progn (launchpad:raw-command 144 note (launchpad:color *light-pressure*))
-              (cloud:schedule server (iname 1 note) 0 60 note 60)))
-      ((list 144 note 0)
-       (progn (launchpad:raw-command 128 note 0)
-              (cloud:schedule server (iname 1 note) 0 0 note 0))
-       (light-up root scale)))))
+(defmethod launchpad:handle-input :after ((server splitted) raw-midi)
+  (trivia:match raw-midi
+    ((list 144 note 127)
+     (progn (launchpad:raw-command 144 note (launchpad:color *light-pressure*))
+            (cloud:schedule server (iname 1 note) 0 60 note 60)))
+    ((list 144 note 0)
+     (progn (launchpad:raw-command 128 note 0)
+            (cloud:schedule server (iname 1 note) 0 0 note 0))
+     (light-up (root server) (mode server) (layout server)))))

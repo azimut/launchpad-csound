@@ -12,14 +12,26 @@
            :documentation "Current SCENE index")
    (beats  :initform #(2.0 2.0 1.0 1.0 0.5 0.5 0.25 0.25)
            :reader   beats
-           :documentation "Beat durations for each SCENE")))
+           :documentation "Beat durations for each SCENE"))
+  (:default-initargs :layout :xy))
 
 (defmethod change-class :after (obj (new (eql 'patterns)) &rest initargs)
   (declare (ignore initargs))
-  (relight-scene 0 (launchpad:color :lg))
   (launchpad:reset)
-  (launchpad:change-layout :xy))
+  (cl-rtmidi:with-midi-oss-out (cl-rtmidi:*default-midi-out-stream* "/dev/midi1")
+    (relight-scene 0 (launchpad:color :hg)))
+  (setf (layout obj) :xy))
 
+(defun init-keys-hash ()
+  (if *keys*
+      (clrhash *keys*)
+      (setf *keys* (make-hash-table :test #'equal :synchronized t))))
+(defun has-keys-p (scene)
+  (position scene (a:hash-table-keys *keys*)
+            :key #'car
+            :test #'=))
+(defun key-pressed-p (key scene)
+  (gethash (list scene key) *keys*))
 (defun remove-key (&rest key)
   (sb-ext:with-locked-hash-table (*keys*)
     (remhash key *keys*)))
@@ -35,13 +47,8 @@
       (let ((duration (aref (beats *csound*) idx)))
         (eat time #'beat time idx duration (a:iota 8))))))
 
-(defun init-keys-hash ()
-  (if *keys*
-      (clrhash *keys*)
-      (setf *keys* (make-hash-table :test #'equal :synchronized t))))
-
 (defmethod launchpad:connect :after ((server patterns))
-  (launchpad:change-layout :xy)
+  (setf (layout server) :xy)
   (init-keys-hash)
   (schedule-all))
 
@@ -54,11 +61,6 @@
                                 note
                                 to-color))))
    *keys*))
-
-(defun has-keys-p (scene)
-  (position scene (a:hash-table-keys *keys*)
-            :key #'car
-            :test #'=))
 
 (defun relight-pages (old-scene)
   (if (has-keys-p old-scene)
@@ -86,14 +88,10 @@
     ((2 3)  .7)
     (t .3)))
 
-;; LOGGING
-#+nil
-(defmethod cloud:schedule :before ((server cloud::csound) instrument &rest rest)
-  (print rest))
-
-(let* ((scale (ego::scale 4 :phrygian))
-       (cscale (cm:new cm:cycle :of scale)))
-  (defun step-keys (stepping-scene stepping-column)
+(let* (;;(scale (ego::scale 4 :phrygian))
+       ;;(cscale (cm:new cm:cycle :of scale))
+       )
+  (defun step-keys (stepping-scene stepping-column scale)
     (serapeum:do-hash-table (k v *keys*)
       (destructuring-bind (scene midi) k
         (destructuring-bind (row col) v
@@ -121,19 +119,17 @@
 (defun beat (time idx dur cycle)
   (let ((column (first cycle))
         (next-time (+ dur time)))
-    (when (and (slot-exists-p *csound* 'index)
+    (when (and (slot-exists-p *csound* 'index); work on change-class
                (= idx (index *csound*)))
       (light-beat time dur column))
-    (eat time #'step-keys idx column)
+    (eat time #'step-keys idx column
+         (ego::scale (root *csound*) (mode *csound*)))
     (eat next-time #'beat
          next-time idx dur (a:rotate (copy-seq cycle) -1))))
 
-(defun key-pressed-p (key scene)
-  (gethash (list scene key) *keys*))
-
 (defmethod launchpad:handle-input :after ((server patterns) raw-midi)
   (trivia:match raw-midi
-    ((trivia:guard
+    ((trivia:guard      ; Scene Buttons
       (list 144 key 127) (or (= key   8)
                              (= key  24)
                              (= key  40)
@@ -144,7 +140,7 @@
                              (= key 120)))
      (progn (launchpad:raw-command #x90 key (launchpad:color :lo))
             (setf (index server) (launchpad:xy key))))
-    ((list 144 key 127)
+    ((list 144 key 127) ; Grid Buttons
      (let ((scene (index server)))
        (if (key-pressed-p key scene)
            (progn (launchpad:raw-command #x80 key 0)
