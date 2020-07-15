@@ -1,6 +1,7 @@
 (in-package #:launchpad-csound)
 
-(defvar *csound* nil)
+(defvar *csound* nil
+  "csound/launchpad server, needed at times globally for different threads")
 
 ;; (cloud:send *csound* "fluidProgramSelect giengine1, 1, gisfnum1, 0, 0")
 ;; (cloud:send *csound* "fluidProgramSelect giengine1, 2, gisfnum1, 0, 42")

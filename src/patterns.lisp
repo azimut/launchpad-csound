@@ -129,11 +129,11 @@
          next-time idx dur (a:rotate (copy-seq cycle) -1))))
 
 (defmethod launchpad:handle-input :after ((server patterns) raw-midi)
-  (let ((i (mod (index server) 4)))
+  (let ((chan (mod (index server) 4)))
     (trivia:match raw-midi
-      ((list 176 104 127) (prev-program i))
-      ((list 176 105 127) (next-program i))
-      ((list 144 8 127) (change-class server (next-class)))
+      ((list 176 104 127) (prev-program server chan))
+      ((list 176 105 127) (next-program server chan))
+      ((list 144   8 127) (change-class server (next-class)))
       ((trivia:guard              ; Scene Buttons
         (list 144 key 127) (or (= key  24)
                                (= key  40)
