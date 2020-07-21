@@ -8,7 +8,7 @@
 ;; (cloud:send *csound* "fluidProgramSelect giengine1, 3, gisfnum1, 0, 40")
 ;; (cloud:send *csound* "fluidProgramSelect giengine1, 4, gisfnum1, 0, 8")
 
-(defclass main (launchpad::controller cloud::udp)
+(defclass main (launchpad::controller cloud::udp scheduler)
   ((root   :initarg :root   :accessor root   :documentation "Pitch Class root note")
    (mode   :initarg :mode   :accessor mode   :documentation "Pitch Class :name")
    (layout :initarg :layout :accessor layout :documentation "Launchpad layout"))

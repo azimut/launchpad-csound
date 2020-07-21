@@ -6,7 +6,7 @@
 
 (defvar *keys* nil)
 
-(defclass patterns (main scheduler)
+(defclass patterns (main)
   ((index  :initform 0
            :accessor index
            :documentation "Current SCENE index")
