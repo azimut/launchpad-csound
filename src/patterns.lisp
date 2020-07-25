@@ -7,20 +7,23 @@
 (defvar *keys* nil)
 
 (defclass patterns (main)
-  ((index  :initform 0
-           :accessor index
-           :documentation "Current SCENE index")
-   (beats  :initform #(2.0 2.0 1.0 1.0 0.5 0.5 0.25 0.25)
-           :reader   beats
-           :documentation "Beat durations for each SCENE"))
+  ((index :initform 0
+          :accessor index
+          :documentation "Current SCENE index")
+   (beats :initform #(2.0 2.0 1.0 1.0 0.5 0.5 0.25 0.25)
+          :reader   beats
+          :documentation "Beat durations for each SCENE"))
   (:default-initargs :layout :xy))
 
+(defmethod (setf index) :around (new-value (server patterns))
+  (when (not (= new-value (slot-value server 'index)))
+    (call-next-method)))
 (defmethod (setf index) :before (new-value (server patterns))
   (check-type new-value (integer 0 7))
   (relight-scene (slot-value server 'index) 0)
   (relight-pages (slot-value server 'index)))
 (defmethod (setf index) :after (new-value (server patterns))
-  (relight-scene new-value (launchpad:color :lg)))
+  (relight-scene new-value (launchpad:color :hg)))
 
 (defmethod change-class :after (obj (new (eql 'patterns)) &rest initargs)
   (declare (ignore initargs))
@@ -75,14 +78,6 @@
       (launchpad:button-scene-xy-on  old-scene (launchpad:color :lg))
       (launchpad:button-scene-xy-off old-scene)))
 
-(defun imap (scene)
-  (max (case scene
-         ((0 2) 3)
-         ((7) 1)
-         ((6) 4)
-         (t 2))
-       1))
-
 (defun idur (scene)
   (case scene
     ((0 1) 1.7)
@@ -100,7 +95,7 @@
                      (= col stepping-column))
             (cloud:schedule
              *csound*
-             (iname (+ (mod scene 4) 1) midi)
+             1;;(iname (+ (mod scene 4) 1) midi)
              0
              (idur scene) ;;(+ (idur scene) (ego::cosr .2 .1 (+ scene)))
              #+nil
@@ -110,7 +105,7 @@
                                row
                                scale)
              ;;(ego::rcosr 60 10 (+ 1 scene))
-             60
+             10
              )))))))
 
 (defun light-beat (time duration column)
@@ -128,26 +123,24 @@
     (eat next-time #'beat
          next-time idx dur (a:rotate (copy-seq cycle) -1))))
 
+(defun is-control (n)
+  (member n '(8 24 40 56 72 88 104 120) :test #'=))
+
 (defmethod launchpad:handle-input :after ((server patterns) raw-midi)
-  (let ((chan (mod (index server) 4)))
+  (let ((chan (mod (index server) 4))
+        (scene (index server)))
     (trivia:match raw-midi
       ((list 176 104 127) (prev-program server chan))
       ((list 176 105 127) (next-program server chan))
-      ((list 144   8 127) (change-class server (next-class)))
-      ((trivia:guard              ; Scene Buttons
-        (list 144 key 127) (or (= key  24)
-                               (= key  40)
-                               (= key  56)
-                               (= key  72)
-                               (= key  88)
-                               (= key 104)
-                               (= key 120)))
+      ((list 176 111 127) (change-class server (next-class)))
+      ((trivia:guard ; Scene Buttons
+        (list 144 key 127) (is-control key))
        (progn (launchpad:raw-command #x90 key (launchpad:color :lo))
               (setf (index server) (launchpad:xy key))))
-      ((list 144 key 127)         ; Grid Buttons
-       (let ((scene (index server)))
-         (if (key-pressed-p key scene)
-             (progn (launchpad:raw-command #x80 key 0)
-                    (remove-key scene key))
-             (progn (launchpad:raw-command #x90 key (launchpad:color :lg))
-                    (add-key scene key))))))))
+      ((trivia:guard ; Grid Buttons
+        (list 144 key 127) (not (is-control key)))
+       (if (key-pressed-p key scene)
+           (progn (launchpad:raw-command #x80 key 0)
+                  (remove-key scene key))
+           (progn (launchpad:raw-command #x90 key (launchpad:color :lg))
+                  (add-key scene key)))))))

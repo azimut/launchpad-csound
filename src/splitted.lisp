@@ -1,5 +1,8 @@
 (in-package #:launchpad-csound)
 
+;; TODO: record notes, quantize in a beat-slice
+;; TODO: arpeggiator, customizable
+
 (defclass splitted (main)
   ()
   (:default-initargs :layout :drum))
@@ -40,15 +43,22 @@
           (removed-roots root mode layout)))
 
 (defmethod launchpad:handle-input :after ((server splitted) raw-midi)
-  (let ((chan 3))
+  (let ((chan 1))
     (trivia:match raw-midi
+      ((list 176 109 127)
+       (print (setf (mode server) (next-mode (slot-value server 'mode))))
+       (force-output))
+      ((list 176 110 127)
+       (print (setf (root server) (mod (1+ (slot-value server 'root)) 12)))
+       (force-output))
+      ((list 176 111 127) (change-class server (next-class)))
       ((list 176 104 127) (prev-program server chan))
       ((list 176 105 127) (next-program server chan))
-      ((list 144 100 127) (change-class server (next-class)))
+      ((list 176 111 127) (print "CHANGE IT") (change-class server (next-class)))
       ((list 144 note 127)
        (progn (launchpad:raw-command 144 note (launchpad:color *light-pressure*))
               (cloud:schedule server (iname chan note) 0 60 note (cm:between 60 64))))
       ((list 144 note 0)
        (progn (launchpad:raw-command 128 note 0)
-              (cloud:schedule server (iname chan note) 0  0 note  0))
-       (light-up (root server) (mode server) (layout server))))))
+              (cloud:schedule server (iname chan note) 0  0 note  0)
+              (light-up (root server) (mode server) (layout server)))))))
