@@ -45,6 +45,8 @@
 (defmethod launchpad:handle-input :after ((server splitted) raw-midi)
   (let ((chan 1))
     (trivia:match raw-midi
+      ((list 176 104 127) (prev-program server chan))
+      ((list 176 105 127) (next-program server chan))
       ((list 176 109 127)
        (print (setf (mode server) (next-mode (slot-value server 'mode))))
        (force-output))
@@ -52,9 +54,6 @@
        (print (setf (root server) (mod (1+ (slot-value server 'root)) 12)))
        (force-output))
       ((list 176 111 127) (change-class server (next-class)))
-      ((list 176 104 127) (prev-program server chan))
-      ((list 176 105 127) (next-program server chan))
-      ((list 176 111 127) (print "CHANGE IT") (change-class server (next-class)))
       ((list 144 note 127)
        (progn (launchpad:raw-command 144 note (launchpad:color *light-pressure*))
               (cloud:schedule server (iname chan note) 0 60 note (cm:between 60 64))))
