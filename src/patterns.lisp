@@ -3,8 +3,11 @@
 ;; Scenes sharing a long pattern (?
 ;; TODO: special light color? root and intervals?
 ;; TODO: multiple touches/colors for different effects
+;; TODO: pick random in row
+;; TODO: random key
 
 (defvar *keys* nil)
+(defvar *muted-beats* ())
 
 (defclass patterns (main)
   ((index :initform 0
@@ -16,8 +19,11 @@
   (:default-initargs :layout :xy))
 
 (defmethod (setf index) :around (new-value (server patterns))
-  (when (not (= new-value (slot-value server 'index)))
-    (call-next-method)))
+  (if (= new-value (slot-value server 'index))
+      (if (position new-value *muted-beats*)
+          (alexandria:deletef *muted-beats* new-value :test #'=)
+          (pushnew new-value *muted-beats* :test #'=))
+      (call-next-method)))
 (defmethod (setf index) :before (new-value (server patterns))
   (check-type new-value (integer 0 7))
   (relight-scene (slot-value server 'index) 0)
@@ -105,7 +111,7 @@
                                row
                                scale)
              ;;(ego::rcosr 60 10 (+ 1 scene))
-             10
+             40
              )))))))
 
 (defun light-beat (time duration column)
@@ -118,16 +124,18 @@
     (when (and (slot-exists-p *csound* 'index); work on change-class
                (= idx (index *csound*)))
       (light-beat time dur column))
-    (eat time #'step-keys idx column
-         (ego::scale (root *csound*) (mode *csound*)))
+    (when (not (position idx *muted-beats* :test #'=))
+      (eat time #'step-keys idx column
+           (ego::scale (root *csound*) (mode *csound*))))
     (eat next-time #'beat
          next-time idx dur (a:rotate (copy-seq cycle) -1))))
 
-(defun is-control (n)
-  (member n '(8 24 40 56 72 88 104 120) :test #'=))
+(defun is-control (key)
+  (member key '(8 24 40 56 72 88 104 120) :test #'=))
 
 (defmethod launchpad:handle-input :after ((server patterns) raw-midi)
-  (let ((chan (mod (index server) 4))
+  (let ((chan 1;;(mod (index server) 4)
+              )
         (scene (index server)))
     (trivia:match raw-midi
       ((list 176 104 127) (prev-program server chan))
