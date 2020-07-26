@@ -41,6 +41,9 @@
   (parse-float:parse-float
    (format nil "~d.~d" instr dot)))
 
+(defun next-root (current-root)
+  (mod (1+ current-root) 12))
+
 (let ((classes '(patterns splitted)))
   (defun next-class ()
     (nth (mod (1+ (or (position (class-name (class-of *csound*)) classes :test #'eql) 0))
