@@ -1,10 +1,11 @@
 (in-package #:launchpad-csound)
 
-(defvar *preset*
-  (list (a:iota 100)
-        (a:iota 100)
-        (a:iota 100)
-        (a:iota 100))
+(defparameter *preset*
+  (list (a:iota 110)
+        (a:iota 110)
+        (a:iota 110)
+        (a:iota 110)
+        (a:iota 110))
   "Global per channel program presets, needs persist between change-class")
 
 (defun change-program (server channel program)
@@ -17,12 +18,12 @@
   (change-program
    server
    channel
-   (first (setf (elt *preset* channel) (a:rotate (copy-seq (elt *preset* channel)) -1)))))
+   (first (setf (elt *preset* (1- channel)) (a:rotate (copy-seq (elt *preset* (1- channel))) -1)))))
 
 (defun next-program (server channel)
   (change-program
    server
    channel
-   (first (setf (elt *preset* channel) (a:rotate (copy-seq (elt *preset* channel)) +1)))))
+   (first (setf (elt *preset* (1- channel)) (a:rotate (copy-seq (elt *preset* (1- channel))) +1)))))
 
 
