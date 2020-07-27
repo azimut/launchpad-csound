@@ -20,10 +20,14 @@ giengine1 fluidEngine
 ;;gisfnum1 fluidLoad "/home/sendai/Downloads/Old School RuneScape (HQ).sf2", giengine1, 1
 gisfnum1 fluidLoad "/home/sendai/Downloads/FatBoy-v0.786.sf2", giengine1, 1
          fluidProgramSelect giengine1, 1, gisfnum1, 0, 0
-         fluidProgramSelect giengine1, 2, gisfnum1, 0, 10
-         fluidProgramSelect giengine1, 3, gisfnum1, 0, 20
-         fluidProgramSelect giengine1, 4, gisfnum1, 0, 30
-
+         fluidProgramSelect giengine1, 2, gisfnum1, 0, 0
+         fluidProgramSelect giengine1, 3, gisfnum1, 0, 0
+         fluidProgramSelect giengine1, 4, gisfnum1, 0, 0
+         fluidProgramSelect giengine1, 5, gisfnum1, 0, 0
+         fluidProgramSelect giengine1, 6, gisfnum1, 0, 0
+         fluidProgramSelect giengine1, 7, gisfnum1, 0, 0
+         fluidProgramSelect giengine1, 8, gisfnum1, 0, 0
+         fluidProgramSelect giengine1, 9, gisfnum1, 0, 0
 ; soundfont path to manual/examples
 ;gisfnum fluidLoad "/home/sendai/Downloads/FatBoy-v0.786.sf2", giengine, 1
 ;gisfnum fluidLoad "/home/sendai/Downloads/Old School RuneScape (HQ).sf2", giengine, 1
@@ -54,8 +58,38 @@ instr 4
   fluidNote giengine1, 4, ikey, ivel
 endin
 
+instr 5
+  ikey init p4
+  ivel init p5
+  fluidNote giengine1, 5, ikey, ivel
+endin
+
+instr 6
+  ikey init p4
+  ivel init p5
+  fluidNote giengine1, 6, ikey, ivel
+endin
+
+instr 7
+  ikey init p4
+  ivel init p5
+  fluidNote giengine1, 7, ikey, ivel
+endin
+
+instr 8
+  ikey init p4
+  ivel init p5
+  fluidNote giengine1, 8, ikey, ivel
+endin
+
+instr 9
+  ikey init p4
+  ivel init p5
+  fluidNote giengine1, 9, ikey, ivel
+endin
+
 instr 99
-  imvol init 7
+  imvol init 10
   asigl, asigr fluidAllOut
                outs     asigl*imvol, asigr*imvol
 endin
