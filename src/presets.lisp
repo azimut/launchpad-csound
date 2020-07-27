@@ -5,6 +5,10 @@
         (a:iota 110)
         (a:iota 110)
         (a:iota 110)
+        (a:iota 110)
+        (a:iota 110)
+        (a:iota 110)
+        (a:iota 110)
         (a:iota 110))
   "Global per channel program presets, needs persist between change-class")
 
