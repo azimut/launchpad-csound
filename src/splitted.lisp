@@ -19,9 +19,9 @@
 
 (cl-punch:enable-punch-syntax)
 
-(defparameter *light-pressure* :lo)
-(defparameter *light-root*     :ho)
-(defparameter *light-scale*    :lg)
+(defparameter *light-pressure* (launchpad:color :lo))
+(defparameter *light-root*     (launchpad:color :ho))
+(defparameter *light-scale*    (launchpad:color :lg))
 
 (defun left-p (note)
   "T if left on drum layout"
@@ -37,13 +37,13 @@
                    (launchpad:get-keys layout))))
 
 (defun light-up (root mode layout)
-  (mapcar (lambda (_) (launchpad:raw-command 144 _ (launchpad:color *light-root*)))
+  (mapcar (lambda (_) (launchpad:raw-command 144 _ *light-root*))
           (get-roots root layout))
-  (mapcar (lambda (_) (launchpad:raw-command 144 _ (launchpad:color *light-scale*)))
+  (mapcar (lambda (_) (launchpad:raw-command 144 _ *light-scale*))
           (removed-roots root mode layout)))
 
 (defmethod launchpad:handle-input :after ((server splitted) raw-midi)
-  (let ((chan 1))
+  (let ((chan 9))
     (trivia:match raw-midi
       ((list 176 104 127) (prev-program server chan))
       ((list 176 105 127) (next-program server chan))
@@ -51,12 +51,13 @@
        (print (setf (mode server) (next-mode (slot-value server 'mode))))
        (force-output))
       ((list 176 110 127)
-       (print (setf (root server) (mod (1+ (slot-value server 'root)) 12)))
+       (print (setf (root server) (next-root (slot-value server 'root))))
        (force-output))
       ((list 176 111 127) (change-class server (next-class)))
+      ((trivia:guard (list 144 note 127) (> note 99))); ignore side
       ((list 144 note 127)
-       (progn (launchpad:raw-command 144 note (launchpad:color *light-pressure*))
-              (cloud:schedule server (iname chan note) 0 60 note (cm:between 60 64))))
+       (progn (launchpad:raw-command 144 note *light-pressure*)
+              (cloud:schedule server (iname chan note) 0 60 note 120)))
       ((list 144 note 0)
        (progn (launchpad:raw-command 128 note 0)
               (cloud:schedule server (iname chan note) 0  0 note  0)
