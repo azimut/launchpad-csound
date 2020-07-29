@@ -2,7 +2,7 @@
 
 """"Instrument"""" thing with Novation's Launchpad Mini and Lisp.
 
-## Usage
+## Usage (WIP)
 
 ``` shell
 > csound do.csd
@@ -15,9 +15,9 @@
 (cloud:connect *csound*)
 ```
 
-## Video example using current (04/06/20) patterns mode
+## Video example using current (26/07/20) patterns mode
 
-[![patterns](https://img.youtube.com/vi/ogdnxAm13zo/0.jpg)](https://www.youtube.com/watch?v=ogdnxAm13zo)
+[![patterns](https://img.youtube.com/vi/BVciaw6djtU/0.jpg)](https://www.youtube.com/watch?v=BVciaw6djtU)
 
 ## License
 
