@@ -10,6 +10,8 @@
 ;;       Play 1 each Nth of cycles
 ;;       Random key prob of play, mutuallyy exclusive in row?
 ;;       Transpose each nth cycles
+;; TODO: chan prob of drop a note
+;; TODO: chain 2 channels with a "compressor" or just rsinr/rcosr
 (defvar *keys* nil)
 
 (defclass patterns (main)
@@ -126,7 +128,7 @@
     ((4 5) 0.4)
     (t 0.1)))
 
-(defun step-keys (stepping-scene stepping-column scale dur)
+(defun step-keys (stepping-scene stepping-column scale dur vel legato offset)
   (serapeum:do-hash-table (k v *keys*)
     (destructuring-bind (scene midi) k
       (destructuring-bind (row col) v
@@ -135,8 +137,8 @@
           (cloud:schedule
            *csound*
            (iname (1+ scene) midi)
-           0
-           (idur scene dur);;(+ (idur scene) (ego::cosr .2 .1 (+ scene)))
+           (+ 0 offset)
+           (+ dur (* dur legato));;(+ (idur scene) (ego::cosr .2 .1 (+ scene)))
            #+nil
            (if (or (= scene 4))
                (+ 60 (car (cm:next cscale (+ 1 row)))))
@@ -144,8 +146,7 @@
                              row
                              scale)
            ;;(ego::rcosr 15 5 (+ 1 scene))
-           (ivel scene)
-           ))))))
+           vel))))))
 ;;'(.1 .2 .3 .5 .8 1 1.3 1.5 1.7 2 3 4)
 (defun light-beat (time duration column)
   (eat time #'launchpad:button-automap-on column (launchpad:color :lg))
@@ -157,10 +158,13 @@
     (when (and (slot-exists-p *csound* 'index); work on change-class
                (= idx (index *csound*)))
       (light-beat time dur column))
-    (when (not (chan-muted (aref *chans* idx)))
-      (eat time #'step-keys idx column
-           (ego::scale (root *csound*) (mode *csound*))
-           dur))
+    ;; (when (not (chan-muted (aref *chans* idx)))
+    ;;   (eat time #'step-keys idx column
+    ;;        (ego::scale (root *csound*) (mode *csound*))
+    ;;        dur
+    ;;        (curr-velocity (1+ idx))
+    ;;        (curr-legato (1+ idx))
+    ;;        (curr-offset (1+ idx))))
     (eat next-time #'beat
          next-time idx dur (a:rotate (copy-seq cycle) -1))))
 
@@ -173,6 +177,11 @@
     (trivia:match raw-midi
       ((list 176 104 127) (prev-program server chan))
       ((list 176 105 127) (next-program server chan))
+
+      ((list 176 106 127) (prev-control chan))
+      ((list 176 107 127) (next-control chan))
+      ((list 176 108 127) (pop-control))
+
       ((list 176 111 127) (change-class server (next-class)))
       ((trivia:guard (list 144 key 127) (is-control key))
        (setf (index server) (launchpad:xy key)))

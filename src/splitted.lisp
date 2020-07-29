@@ -47,6 +47,10 @@
     (trivia:match raw-midi
       ((list 176 104 127) (prev-program server chan))
       ((list 176 105 127) (next-program server chan))
+
+      ((list 176 106 127) (prev-velocity chan))
+      ((list 176 107 127) (next-velocity chan))
+
       ((list 176 109 127)
        (print (setf (mode server) (next-mode (slot-value server 'mode))))
        (force-output))
@@ -57,7 +61,7 @@
       ((trivia:guard (list 144 note 127) (> note 99))); ignore side
       ((list 144 note 127)
        (progn (launchpad:raw-command 144 note *light-pressure*)
-              (cloud:schedule server (iname chan note) 0 60 note 120)))
+              (cloud:schedule server (iname chan note) 0 60 note (curr-velocity chan))))
       ((list 144 note 0)
        (progn (launchpad:raw-command 128 note 0)
               (cloud:schedule server (iname chan note) 0  0 note  0)
