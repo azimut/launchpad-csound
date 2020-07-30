@@ -17,7 +17,6 @@
                #:scheduler
                #:trivia)
   :components ((:file "package")
-               (:file "presets")
                (:file "launchpad-csound")
                (:file "scheduler")
                (:file "patterns")

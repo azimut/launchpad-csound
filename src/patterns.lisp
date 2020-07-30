@@ -1,6 +1,7 @@
 (in-package #:launchpad-csound)
-;; TODO: per stage: velocity legato program bank
-;; TODO: global: mode root
+;; TODO: speedup, slowdown (might be beat might be overall tempo)
+;; TODO: reset next operation on change-class and or change of scene
+;; TODO: operation change to work on splitted (a subset at least)
 ;; TODO: Offset keys (will have to move all current keys)
 ;;       Might be don't delete keys outside grid
 ;; TODO: Special light color?
@@ -15,16 +16,15 @@
 (defvar *keys* nil)
 
 (defclass patterns (main)
-  ((index :initform 0
-          :accessor index
-          :documentation "Current SCENE index")
-   (beats :initform #(2.0 2.0 1.0 1.0 0.5 0.5 0.25 0.25)
-          :reader   beats
-          :documentation "Beat durations for each SCENE"))
-  (:default-initargs :layout :xy))
+  ((beats  :initform #(2.0 2.0 1.0 1.0 0.5 0.5 0.25 0.25)
+           :reader   beats
+           :documentation "Beat durations for each SCENE"))
+  (:default-initargs
+   :controls '(program bank reverb chorus velocity root mode offset delay legato)
+   :layout :xy))
 
 (defun relight-different (old new)
-  (let ((muted (chan-muted (aref *chans* old)))
+  (let ((muted (aref (slot-value *csound* 'muted) old))
         (playing (has-keys-p old)))
     (when (and (not playing) (not muted))
       (launchpad:button-scene-xy-off old))
@@ -32,40 +32,43 @@
       (launchpad:button-scene-xy-on old (launchpad:color :lg)))
     (when muted
       (launchpad:button-scene-xy-on old (launchpad:color :lr))))
-  (let ((muted (chan-muted (aref *chans* new))))
+  (let ((muted (aref (slot-value *csound* 'muted) new)))
     (if muted
         (launchpad:button-scene-xy-on new (launchpad:color :lr))
         (launchpad:button-scene-xy-on new (launchpad:color :lo)))))
 
 (defun relight-equal (scene)
-  (let ((muted (chan-muted (aref *chans* scene))))
+  (let ((muted (aref (slot-value *csound* 'muted) scene)))
     (if muted
         (launchpad:button-scene-xy-on scene (launchpad:color :lo))
         (launchpad:button-scene-xy-on scene (launchpad:color :lr)))
-    (setf (chan-muted (aref *chans* scene))
-          (not (chan-muted (aref *chans* scene))))))
+    ;; flip
+    (setf (aref (slot-value *csound* 'muted) scene)
+          (not (aref (slot-value *csound* 'muted) scene)))))
 
 (defun relight-page (scene)
-  (let ((muted (chan-muted (aref *chans* scene)))
+  (let ((muted (aref (slot-value *csound* 'muted) scene))
         (playing (has-keys-p scene)))
     (when muted
       (launchpad:button-scene-xy-on scene (launchpad:color :lr)))
     (when (and playing (not muted))
       (launchpad:button-scene-xy-on scene (launchpad:color :lg)))))
 
-(defmethod (setf index) :around (new-value (server patterns))
-  (if (= new-value (slot-value server 'index)); un/mute if same
+(defmethod (setf idx) :around (new-value (server patterns))
+  (if (= new-value (slot-value server 'idx)); un/mute if same
       (progn (relight-equal new-value))
-      (progn (relight-different (slot-value server 'index) new-value)
+      (progn (relight-different (slot-value server 'idx) new-value)
              (call-next-method))))
-(defmethod (setf index) :before (new-value (server patterns))
-  (check-type new-value (integer 0 7))
-  (relight-scene (slot-value server 'index) 0))
-(defmethod (setf index) :after (new-value (server patterns))
+(defmethod (setf idx) :before (new-value (server patterns))
+  (when (< (slot-value server 'idx) 8)
+    (relight-scene (slot-value server 'idx) 0)))
+(defmethod (setf idx) :after (new-value (server patterns))
   (relight-scene new-value (launchpad:color :lg)))
 
 (defmethod change-class :after (obj (new (eql 'patterns)) &rest initargs)
   (declare (ignore initargs))
+  (setf (slot-value obj 'controls) '(program bank reverb chorus velocity root mode offset delay legato))
+  (setf (slot-value obj 'idx) 0)
   (launchpad:reset)
   (cl-rtmidi:with-midi-oss-out (cl-rtmidi:*default-midi-out-stream* "/dev/midi1")
     (relight-scene 0 (launchpad:color :lg)))
@@ -128,7 +131,7 @@
     ((4 5) 0.4)
     (t 0.1)))
 
-(defun step-keys (stepping-scene stepping-column scale dur vel legato offset)
+(defun step-keys (stepping-scene stepping-column scale dur vel legato delay offset)
   (serapeum:do-hash-table (k v *keys*)
     (destructuring-bind (scene midi) k
       (destructuring-bind (row col) v
@@ -137,17 +140,17 @@
           (cloud:schedule
            *csound*
            (iname (1+ scene) midi)
-           (+ 0 offset)
+           (+ 0 delay)
            (+ dur (* dur legato));;(+ (idur scene) (ego::cosr .2 .1 (+ scene)))
            #+nil
            (if (or (= scene 4))
                (+ 60 (car (cm:next cscale (+ 1 row)))))
            (ego::pc-relative (+ 48 (* 24 (mod scene 2)))
-                             row
+                             (+ row offset)
                              scale)
            ;;(ego::rcosr 15 5 (+ 1 scene))
            vel))))))
-;;'(.1 .2 .3 .5 .8 1 1.3 1.5 1.7 2 3 4)
+
 (defun light-beat (time duration column)
   (eat time #'launchpad:button-automap-on column (launchpad:color :lg))
   (eat (+ duration time) #'launchpad:button-automap-off column))
@@ -155,39 +158,58 @@
 (defun beat (time idx dur cycle)
   (let ((column (first cycle))
         (next-time (+ dur time)))
-    (when (and (slot-exists-p *csound* 'index); work on change-class
-               (= idx (index *csound*)))
+    (when (= idx (idx *csound*))
       (light-beat time dur column))
-    ;; (when (not (chan-muted (aref *chans* idx)))
-    ;;   (eat time #'step-keys idx column
-    ;;        (ego::scale (root *csound*) (mode *csound*))
-    ;;        dur
-    ;;        (curr-velocity (1+ idx))
-    ;;        (curr-legato (1+ idx))
-    ;;        (curr-offset (1+ idx))))
+    (when (not (aref (slot-value *csound* 'muted) idx))
+      (eat time #'step-keys idx column
+           (ego::scale (root *csound*) (mode *csound*))
+           dur
+           (first (aref (slot-value *csound* 'velocity) idx))
+           (first (aref (slot-value *csound* 'legato)   idx))
+           (first (aref (slot-value *csound* 'delay)    idx))
+           (first (aref (slot-value *csound* 'offset)   idx))))
     (eat next-time #'beat
          next-time idx dur (a:rotate (copy-seq cycle) -1))))
 
 (defun is-control (key)
   (member key '(8 24 40 56 72 88 104 120) :test #'=))
 
-(defmethod launchpad:handle-input :after ((server patterns) raw-midi)
-  (let* ((scene (index server))
-         (chan  (1+ scene)))
+(defmethod launchpad:handle-input :after ((obj patterns) raw-midi)
+  (let ((scene (idx obj)))
     (trivia:match raw-midi
-      ((list 176 104 127) (prev-program server chan))
-      ((list 176 105 127) (next-program server chan))
-
-      ((list 176 106 127) (prev-control chan))
-      ((list 176 107 127) (next-control chan))
-      ((list 176 108 127) (pop-control))
-
-      ((list 176 111 127) (change-class server (next-class)))
+      ((list 176 111 127) (change-class obj (next-class)))
       ((trivia:guard (list 144 key 127) (is-control key))
-       (setf (index server) (launchpad:xy key)))
+       (setf (idx obj) (launchpad:xy key)))
       ((trivia:guard (list 144 key 127) (not (is-control key)))
        (if (key-pressed-p key scene)
            (progn (launchpad:raw-command #x80 key 0)
                   (remove-key scene key))
            (progn (launchpad:raw-command #x90 key (launchpad:color :lg))
                   (add-key scene key)))))))
+
+
+(defmethod inc-control ((obj patterns))
+  (ecase (controls obj)
+    (program  (next-program  obj))
+    (bank     (next-bank     obj))
+    (reverb   (next-reverb   obj))
+    (chorus   (next-chorus   obj))
+    (velocity (next-velocity obj))
+    (root     (next-root     obj))
+    (mode     (next-mode     obj))
+    (offset   (next-offset   obj))
+    (delay    (next-delay    obj))
+    (legato   (next-legato   obj))))
+
+(defmethod dec-control ((obj patterns))
+  (ecase (controls obj)
+    (program  (prev-program  obj))
+    (bank     (prev-bank     obj))
+    (reverb   (prev-reverb   obj))
+    (chorus   (prev-chorus   obj))
+    (velocity (prev-velocity obj))
+    (root     (prev-root     obj))
+    (mode     (prev-mode     obj))
+    (offset   (prev-offset   obj))
+    (delay    (prev-delay    obj))
+    (legato   (prev-legato   obj))))

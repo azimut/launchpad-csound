@@ -7,10 +7,24 @@
   ()
   (:default-initargs :layout :drum))
 
+(defmethod (setf root) :before (new-root (obj splitted))
+  (launchpad:reset)
+  (launchpad:change-layout (layout obj))
+  (cl-rtmidi:with-midi-oss-out (cl-rtmidi:*default-midi-out-stream* "/dev/midi1")
+    (light-up (first new-root) (mode obj) (layout obj))))
+
+(defmethod (setf mode) :before (new-mode (obj splitted))
+  (launchpad:reset)
+  (launchpad:change-layout (layout obj))
+  (cl-rtmidi:with-midi-oss-out (cl-rtmidi:*default-midi-out-stream* "/dev/midi1")
+    (light-up (root obj) (first new-mode) (layout obj))))
+
 (defmethod change-class :after (obj (new (eql 'splitted)) &rest initargs)
   (declare (ignore initargs))
   (launchpad:reset)
   (launchpad:connect obj)
+  (setf (slot-value obj 'idx) 8 )
+  (setf (slot-value obj 'controls) '(program bank reverb chorus velocity root mode))
   (cl-rtmidi:with-midi-oss-out (cl-rtmidi:*default-midi-out-stream* "/dev/midi1")
     (light-up (root obj) (mode obj) (layout obj))))
 
@@ -18,10 +32,6 @@
   (setf (layout obj) :drum))
 
 (cl-punch:enable-punch-syntax)
-
-(defparameter *light-pressure* (launchpad:color :lo))
-(defparameter *light-root*     (launchpad:color :ho))
-(defparameter *light-scale*    (launchpad:color :lg))
 
 (defun left-p (note)
   "T if left on drum layout"
@@ -42,27 +52,15 @@
   (mapcar (lambda (_) (launchpad:raw-command 144 _ *light-scale*))
           (removed-roots root mode layout)))
 
-(defmethod launchpad:handle-input :after ((server splitted) raw-midi)
-  (let ((chan 9))
+(defmethod launchpad:handle-input :after ((obj splitted) raw-midi)
+  (let ((chan (1+ (idx obj))))
     (trivia:match raw-midi
-      ((list 176 104 127) (prev-program server chan))
-      ((list 176 105 127) (next-program server chan))
-
-      ((list 176 106 127) (prev-velocity chan))
-      ((list 176 107 127) (next-velocity chan))
-
-      ((list 176 109 127)
-       (print (setf (mode server) (next-mode (slot-value server 'mode))))
-       (force-output))
-      ((list 176 110 127)
-       (print (setf (root server) (next-root (slot-value server 'root))))
-       (force-output))
-      ((list 176 111 127) (change-class server (next-class)))
+      ((list 176 111 127) (change-class obj (next-class)))
       ((trivia:guard (list 144 note 127) (> note 99))); ignore side
       ((list 144 note 127)
        (progn (launchpad:raw-command 144 note *light-pressure*)
-              (cloud:schedule server (iname chan note) 0 60 note (curr-velocity chan))))
+              (cloud:schedule obj (iname chan note) 0 60 note (velocity obj))))
       ((list 144 note 0)
        (progn (launchpad:raw-command 128 note 0)
-              (cloud:schedule server (iname chan note) 0  0 note  0)
-              (light-up (root server) (mode server) (layout server)))))))
+              (cloud:schedule obj (iname chan note) 0  0 note  0)
+              (light-up (root obj) (mode obj) (layout obj)))))))
