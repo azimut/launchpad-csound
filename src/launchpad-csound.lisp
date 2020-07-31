@@ -81,8 +81,11 @@
   (print (first (setf (controls obj) (alexandria:rotate (copy-seq (slot-value obj 'controls)) -1))))
   (force-output))
 
-(defmethod inc-control ((obj main))
-  (ecase (controls obj)
+(defgeneric inc-control (obj) (:method-combination progn))
+(defgeneric dec-control (obj) (:method-combination progn))
+
+(defmethod inc-control progn ((obj main))
+  (case (controls obj)
     (program  (next-program  obj))
     (bank     (next-bank     obj))
     (reverb   (next-reverb   obj))
@@ -91,8 +94,8 @@
     (root     (next-root     obj))
     (mode     (next-mode     obj))))
 
-(defmethod dec-control ((obj main))
-  (ecase (controls obj)
+(defmethod dec-control progn ((obj main))
+  (case (controls obj)
     (program  (prev-program  obj))
     (bank     (prev-bank     obj))
     (reverb   (prev-reverb   obj))
